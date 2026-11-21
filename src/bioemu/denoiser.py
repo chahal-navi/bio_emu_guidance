@@ -1,14 +1,14 @@
 # In denoiser.py
 import torch
 # Import your colleague's module
-from bioemu.steering.custom_potentials import MembranePotentialPlaceholder """ This is our Paceholder defined in the aformentioned directory"""
+from bioemu.steering.custom_potentials import MembranePotentialPlaceholder
+# This is our Placeholder defined in the aforementioned directory
 # Licensed under the MIT License.
 import logging
 from dataclasses import dataclass
 from typing import cast
 
 import numpy as np
-import torch
 from torch_geometric.data.batch import Batch
 from tqdm.auto import tqdm
 
@@ -526,9 +526,120 @@ def second_order_step_dpmsolver(
     )
 
     return batch.replace(pos=pos_next, node_orientations=so3_sample)
-membrane_evaluator = MembranePotentialPlaceholder()
-"""For ease of access, I am instantiating the potential globally, feel free
-to change it as per your needs and leave a small commit note for any substantial change or whatsapp me."""
+def dpm_solver(
+    sdes: dict[str, SDE],
+    batch: Batch,
+    N: int,
+    score_model: torch.nn.Module,
+    max_t: float,
+    eps_t: float,
+    device: torch.device,
+    record_grad_steps: set[int] = set(),
+    noise: float = 0.0,
+) -> Batch:
+    """
+    Implements the DPM solver for the VPSDE, with the Cosine noise schedule.
+    Following this paper: https://arxiv.org/abs/2206.00927 Algorithm 1 DPM-Solver-2.
+
+    This is the unsteered denoiser. For steered sampling (FKC/SMC), use
+    dpm_solver_fkc or dpm_solver_smc from the steering package. For membrane
+    guidance, use membrane_guided_dpm_solver below.
+    """
+    grad_is_enabled = torch.is_grad_enabled()
+    assert isinstance(batch, Batch)
+    assert max_t < 1.0
+
+    batch = batch.to(device)
+
+    if isinstance(score_model, torch.nn.Module):
+        score_model = score_model.to(device)
+    pos_sde = sdes["pos"]
+    assert isinstance(pos_sde, CosineVPSDE)
+
+    batch = batch.replace(
+        pos=sdes["pos"].prior_sampling(batch.pos.shape, device=device),
+        node_orientations=sdes["node_orientations"].prior_sampling(
+            batch.node_orientations.shape, device=device
+        ),
+    )
+    batch = cast(ChemGraph, batch)
+
+    so3_sde = sdes["node_orientations"]
+    assert isinstance(so3_sde, SO3SDE)
+    so3_sde.to(device)
+
+    timesteps = torch.linspace(max_t, eps_t, N, device=device)
+    dt = -torch.tensor((max_t - eps_t) / (N - 1)).to(device)
+    ts_min = 0.0
+    ts_max = 1.0
+    fields = list(sdes.keys())
+    noisers = {
+        name: EulerMaruyamaPredictor(
+            corruption=sde, noise_weight=1.0, marginal_concentration_factor=1.0
+        )
+        for name, sde in sdes.items()
+    }
+
+    for i in tqdm(range(N - 1), position=1, desc="Denoising: ", ncols=0, leave=False):
+        t = torch.full((batch.num_graphs,), timesteps[i], device=device)
+        t_hat = t - noise * dt if (i > 0 and t[0] > ts_min and t[0] < ts_max) else t
+        t_next = t + dt
+
+        # Pre-step noise injection (Karras/Heun style)
+        vals_hat = {}
+        for field in fields:
+            vals_hat[field] = noisers[field].forward_sde_step(
+                x=batch[field], t=t, dt=(t_hat - t)[0], batch_idx=batch.batch
+            )[0]
+        batch_hat = batch.replace(**vals_hat)
+
+        # Evaluate score at (possibly noised) state
+        with torch.set_grad_enabled(grad_is_enabled and (i in record_grad_steps)):
+            score = get_score(batch=batch_hat, t=t_hat, score_model=score_model, sdes=sdes)
+
+        batch_idx = batch_hat.batch
+
+        # Coefficients + midpoint prediction
+        coeffs = _get_dpm_coefficients(pos_sde, batch_hat.pos, t_hat, t_next, batch_idx)
+
+        batch_lambda = _predict_midpoint(
+            batch=batch_hat,
+            coeffs=coeffs,
+            score_pos=score["pos"],
+            score_so3=score["node_orientations"],
+            so3_sde=so3_sde,
+            t=t_hat,
+            batch_idx=batch_idx,
+        )
+
+        # Correction step: evaluate score at midpoint
+        with torch.set_grad_enabled(grad_is_enabled and (i in record_grad_steps)):
+            score_lambda = get_score(
+                batch=batch_lambda, t=coeffs.t_lambda, sdes=sdes, score_model=score_model
+            )
+
+        # DPM-Solver 2nd-order ODE step (midpoint-only formula)
+        batch = second_order_step_dpmsolver(
+            batch=batch_hat,
+            coeffs=coeffs,
+            score_pos_lambda=score_lambda["pos"],
+            score_so3_t=score["node_orientations"],
+            score_so3_lambda=score_lambda["node_orientations"],
+            so3_sde=so3_sde,
+            t=t_hat,
+            t_next=t_next,
+            batch_idx=batch_idx,
+        )
+
+    return batch
+
+
+# NOTE: the potential used to be instantiated here as a module-level global
+# (`MembranePotentialPlaceholder()`), which crashed on import because the
+# class now requires a `csv_path`. It's instantiated lazily inside
+# membrane_guided_dpm_solver instead, from the new `membrane_csv_path` arg,
+# so guidance is opt-in per call and importing this module no longer
+# depends on a CSV being present.
 def membrane_guided_dpm_solver(
     sdes: dict[str, SDE],
     batch: Batch,
@@ -540,8 +651,21 @@ def membrane_guided_dpm_solver(
     record_grad_steps: set[int] = set(),
     noise: float = 0.0,
     guidance_scale: float = 1.0,
+    membrane_csv_path: str | None = None,
 ) -> Batch:
-    """Guided DPM solver injecting translational gradients. Will uise Quaternions from RegFlow for rotational."""
+    """Guided DPM solver injecting translational gradients. Will uise Quaternions from RegFlow for rotational.
+
+    Args:
+        membrane_csv_path: Path to the per-residue membrane CSV (see
+            MembranePotentialPlaceholder). If None (default), membrane
+            guidance is skipped entirely and this behaves like the
+            unguided solver.
+    """
+    membrane_evaluator = (
+        MembranePotentialPlaceholder(csv_path=membrane_csv_path)
+        if membrane_csv_path is not None
+        else None
+    )
     assert isinstance(batch, Batch)
     assert max_t < 1.0
 
@@ -584,34 +708,50 @@ def membrane_guided_dpm_solver(
         batch_hat = batch.replace(**vals_hat)
         batch_idx = batch_hat.batch
 
-        # Guidance strats here
-        # Force gradient tracking on position for guidance calculus
-        with torch.enable_grad():
-            batch_hat.pos.requires_grad_(True)
-            
-            # Base unguided score
-            score = get_score(batch=batch_hat, t=t_hat, score_model=score_model, sdes=sdes)
-            
-            # Calculate Tweedie Estimate (x0_hat)
-            coeffs = _get_dpm_coefficients(pos_sde, batch_hat.pos, t_hat, t_next, batch_idx)
-            x0_hat = (batch_hat.pos + (coeffs.sigma_t ** 2) * score["pos"]) / coeffs.alpha_t
-            
-            # Run classifier and physics potential
-            
-                
-            custom_pot_energy = membrane_evaluator(x0_hat)
-                
+        # Base unguided score (computed either way; coeffs are needed below regardless of guidance)
+        if membrane_evaluator is not None:
+            # Guidance starts here
+            # Force gradient tracking on position for guidance calculus
+            with torch.enable_grad():
+                batch_hat.pos.requires_grad_(True)
+
+                score = get_score(batch=batch_hat, t=t_hat, score_model=score_model, sdes=sdes)
+
+                # Calculate Tweedie Estimate (x0_hat)
+                coeffs = _get_dpm_coefficients(pos_sde, batch_hat.pos, t_hat, t_next, batch_idx)
+                x0_hat = (batch_hat.pos + (coeffs.sigma_t ** 2) * score["pos"]) / coeffs.alpha_t
+
+                # x0_hat is flattened across the PyG batch: (num_graphs * n_res, 3).
+                # All graphs in the batch share the same sequence/residue count
+                # (see custom_sample.generate_batch), so this reshape is exact.
+                num_graphs = batch_hat.num_graphs
+                if x0_hat.shape[0] % num_graphs != 0:
+                    raise ValueError(
+                        f"Cannot evenly split {x0_hat.shape[0]} nodes across "
+                        f"{num_graphs} graphs; membrane guidance requires every "
+                        "graph in the batch to have the same residue count."
+                    )
+                n_res = x0_hat.shape[0] // num_graphs
+                x0_hat_per_graph = x0_hat.reshape(num_graphs, n_res, 3)
+
+                # Run physics potential per structure in the batch
+                custom_pot_energy = membrane_evaluator(x0_hat_per_graph)  # (num_graphs,)
+
                 # Compute gradient (summing energy to get a scalar for autograd)
-            guidance_grad = torch.autograd.grad(outputs=custom_pot_energy.sum(), inputs=batch_hat.pos)[0]
-            
-            # 4. Inject steering
-            eta_scale = 1.5
-            score["pos"] = score["pos"] + (eta_scale * guidance_grad)
-            
-            batch_hat.pos = batch_hat.pos.detach()
-            score["pos"] = score["pos"].detach()
-            score["node_orientations"] = score["node_orientations"].detach()
-        # --- END OF GUIDANCE INJECTION ---
+                guidance_grad = torch.autograd.grad(
+                    outputs=custom_pot_energy.sum(), inputs=batch_hat.pos
+                )[0]
+
+                # Inject steering
+                score["pos"] = score["pos"] + (guidance_scale * guidance_grad)
+
+                batch_hat.pos = batch_hat.pos.detach()
+                score["pos"] = score["pos"].detach()
+                score["node_orientations"] = score["node_orientations"].detach()
+            # --- END OF GUIDANCE INJECTION ---
+        else:
+            score = get_score(batch=batch_hat, t=t_hat, score_model=score_model, sdes=sdes)
+            coeffs = _get_dpm_coefficients(pos_sde, batch_hat.pos, t_hat, t_next, batch_idx)
 
         # Continue with standard DPM-Solver midpoint prediction
         batch_lambda = _predict_midpoint(
