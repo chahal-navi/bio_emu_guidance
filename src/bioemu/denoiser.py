@@ -641,6 +641,7 @@ def _guided_pos_score(
     guidance_scale: float,
     backprop_through_model: bool,
     max_guidance_norm: float | None,
+    max_guidance_ratio: float | None = None,
 ) -> tuple[dict[str, torch.Tensor], torch.Tensor]:
     """Score of the tilted marginal p_t(x) * exp(-guidance_scale * E(x0_hat(x))) (DPS-style).
 
@@ -679,6 +680,16 @@ def _guided_pos_score(
         g = guidance.view(num_graphs, -1)
         norm = g.norm(dim=-1, keepdim=True).clamp(min=1e-12)
         guidance = (g * torch.clamp(max_guidance_norm / norm, max=1.0)).view_as(guidance)
+    if max_guidance_ratio is not None:
+        # Cap the guidance at a fraction of the model's own score, per structure. This is
+        # scale-free in t (score magnitudes grow as t -> 0), so one setting holds across the
+        # whole trajectory, unlike an absolute norm cap. Without it a stiff potential (e.g. a
+        # chain-break barrier on an already-broken chain) can dominate a single step and
+        # destroy the structure.
+        g = guidance.view(num_graphs, -1)
+        s_norm = score["pos"].detach().view(num_graphs, -1).norm(dim=-1, keepdim=True)
+        g_norm = g.norm(dim=-1, keepdim=True).clamp(min=1e-12)
+        guidance = (g * torch.clamp(max_guidance_ratio * s_norm / g_norm, max=1.0)).view_as(guidance)
 
     guided = {
         "pos": (score["pos"] + guidance).detach(),
@@ -704,6 +715,7 @@ def membrane_guided_dpm_solver(
     guide_midpoint: bool = True,
     backprop_through_model: bool = True,
     max_guidance_norm: float | None = None,
+    max_guidance_ratio: float | None = None,
     membrane_csv_path: str | None = None,
 ) -> Batch:
     """DPM-Solver-2 (same integrator as `dpm_solver`) with DPS-style gradient guidance on
@@ -722,6 +734,9 @@ def membrane_guided_dpm_solver(
             *only* the midpoint score, so without this the guidance barely affects samples.
         backprop_through_model: full DPS (True) or score-as-constant approximation (False).
         max_guidance_norm: optional per-structure clip on the guidance term's norm.
+        max_guidance_ratio: optional per-structure clip expressed as a fraction of the model's
+            own score norm (e.g. 0.5 = guidance may never exceed half the score). Preferred
+            over max_guidance_norm because it is scale-free in t.
         membrane_csv_path: backward-compatible shortcut for
             potential=MembranePotentialPlaceholder(csv_path) (Kabsch frame).
     """
@@ -769,6 +784,7 @@ def membrane_guided_dpm_solver(
         guidance_scale=guidance_scale,
         backprop_through_model=backprop_through_model,
         max_guidance_norm=max_guidance_norm,
+        max_guidance_ratio=max_guidance_ratio,
     )
 
     desc = "Guided denoising: " if potential is not None else "Denoising: "

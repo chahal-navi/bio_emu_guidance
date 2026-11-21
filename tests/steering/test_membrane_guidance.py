@@ -210,3 +210,38 @@ def test_guided_solver_runs_with_tiny_model_and_ez(default_batch, tiny_model):
     )  # fmt: skip
     assert torch.isfinite(out.pos).all()
     assert not math.isnan(out.node_orientations.sum().item())
+
+
+class _HugePotential:
+    """Energy with an enormous gradient, to exercise the guidance clip."""
+
+    def __call__(self, x, *, t=None, sequence=None):
+        return 1e6 * x.sum(dim=(-1, -2))
+
+
+def test_max_guidance_ratio_bounds_the_step():
+    """An unbounded potential must not be able to dominate the score."""
+    torch.manual_seed(0)
+    sdes, score_fn, batch, mu, s = _gaussian_problem(batch_size=200)
+    kw = dict(sdes=sdes, batch=batch, N=20, score_model=score_fn, max_t=0.99, eps_t=0.001,
+              device=torch.device("cpu"), potential=_HugePotential())  # fmt: skip
+    unclipped = membrane_guided_dpm_solver(**kw)
+    clipped = membrane_guided_dpm_solver(**kw, max_guidance_ratio=0.1)
+    assert not torch.isfinite(unclipped.pos).all() or unclipped.pos.abs().mean() > 1e3
+    assert torch.isfinite(clipped.pos).all()
+    assert clipped.pos.abs().mean() < unclipped.pos.abs().mean()
+
+
+def test_sum_potential_adds_terms():
+    from bioemu.steering.collective_variables import CaCaDistance
+    from bioemu.steering.custom_potentials import SumPotential
+    from bioemu.steering.potentials import UmbrellaPotential
+
+    ez = EzMembranePotential(sequence=MELITTIN, refine_steps=5)
+    chain = UmbrellaPotential(cv=CaCaDistance(), target=0.38, flatbottom=0.1, slope=10.0,
+                              order=1, linear_from=0.1)  # fmt: skip
+    total = SumPotential([ez, chain])
+    x = _ideal_helix_nm(len(MELITTIN))[None]
+    torch.testing.assert_close(total(x), ez(x) + chain(x), atol=1e-4, rtol=0)
+    # an ideal helix has near-ideal Ca-Ca spacing, so the chain term should be ~0 there
+    assert chain(x).abs().item() < 1.0

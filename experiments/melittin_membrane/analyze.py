@@ -38,12 +38,14 @@ CHARGED = set("KR")
 
 # Fixed categorical order (color follows the method, not its rank). Validated default palette.
 METHOD_COLORS = {
-    "baseline": "#2a78d6",
-    "dps_lam0.5": "#eb6834",
-    "dps_lam1.69": "#1baf7a",
-    "dps_lam5": "#eda100",
-    "smc": "#e87ba4",
-    "fkc": "#6250d6",
+    "baseline": "#2a78d6",          # blue
+    "dps_lam1.69": "#eb6834",       # orange
+    "dps_lam5": "#1baf7a",          # aqua
+    "dps_phys_lam1.69": "#eda100",  # yellow
+    "dps_phys_lam5": "#e87ba4",     # magenta
+    "smc": "#008300",               # green
+    "fkc": "#6250d6",               # violet
+    "dps_lam0.5": "#e34948",        # red (only when the 0.5 arm is run)
 }
 EXTRA_COLORS = ["#008300", "#e34948"]
 INK, MUTED, GRID = "#1f1f1e", "#6b6a64", "#e4e3dd"

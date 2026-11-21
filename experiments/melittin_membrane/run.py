@@ -29,25 +29,25 @@ def load_config(name: str) -> dict:
 
 
 def build_runs(methods: list[str], dps_scales: list[float]) -> list[tuple[str, dict]]:
+    """One run per config, except configs exposing `guidance_scale`, which get a lambda sweep."""
     runs = []
-    if "baseline" in methods:
-        runs.append(("baseline", load_config("baseline")))
-    if "dps" in methods:
-        for lam in dps_scales:
-            cfg = load_config("dps")
-            cfg["guidance_scale"] = lam
-            runs.append((f"dps_lam{lam:g}", cfg))
-    for name in ("smc", "fkc"):
-        if name in methods:
-            runs.append((name, load_config(name)))
+    for name in methods:
+        cfg = load_config(name)
+        if "guidance_scale" in cfg and dps_scales:
+            for lam in dps_scales:
+                swept = load_config(name)
+                swept["guidance_scale"] = lam
+                runs.append((f"{name}_lam{lam:g}", swept))
+        else:
+            runs.append((name, cfg))
     return runs
 
 
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--sequence", default=MELITTIN)
-    p.add_argument("--methods", nargs="+", default=["baseline", "dps", "smc", "fkc"])
-    p.add_argument("--dps-scales", nargs="+", type=float, default=[0.5, 1.69, 5.0])
+    p.add_argument("--methods", nargs="+", default=["baseline", "dps", "dps_phys", "smc", "fkc"])
+    p.add_argument("--dps-scales", nargs="+", type=float, default=[1.69, 5.0])
     p.add_argument("--num-samples", type=int, default=500)
     p.add_argument("--batch-size-100", type=int, default=10)
     p.add_argument("--model-name", default="bioemu-v1.1")

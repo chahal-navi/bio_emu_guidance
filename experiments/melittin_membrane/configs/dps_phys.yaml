@@ -1,0 +1,41 @@
+# Path B + physicality: Ez membrane potential combined with BioEmu's own chain-break
+# and clash potentials (the same ones as config/steering/physical_steering.yaml).
+# The membrane term alone has an unbounded escape direction (push K/R away from the
+# bilayer); the chain term is what opposes it, so guidance changes conformation
+# instead of stretching the peptide.
+_target_: bioemu.denoiser.membrane_guided_dpm_solver
+_partial_: true
+eps_t: 0.001
+max_t: 0.99
+N: 100
+noise: 0.0
+guidance_scale: 1.69
+guidance_t_max: 0.8
+guidance_t_min: 0.0
+guide_midpoint: true
+backprop_through_model: true
+max_guidance_ratio: 0.5
+potential:
+  _target_: bioemu.steering.custom_potentials.SumPotential
+  potentials:
+    - _target_: bioemu.steering.custom_potentials.EzMembranePotential
+      frame: optimize
+      weight: 1.0
+    - _target_: bioemu.steering.UmbrellaPotential   # chain break: Ca-Ca ~0.38 nm
+      cv:
+        _target_: bioemu.steering.CaCaDistance
+      target: 0.38
+      flatbottom: 0.1
+      slope: 10.0
+      order: 1
+      linear_from: 0.1
+      weight: 1.0
+    - _target_: bioemu.steering.UmbrellaPotential   # steric clash
+      cv:
+        _target_: bioemu.steering.PairwiseClash
+        min_dist: 0.41
+        offset: 3
+      target: 0.0
+      flatbottom: 0.0
+      slope: 30.0
+      weight: 1.0

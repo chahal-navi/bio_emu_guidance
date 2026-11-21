@@ -392,3 +392,49 @@ class MembranePotentialPlaceholder(EzMembranePotential):
             only_interacting=only_interacting,
             **kwargs,
         )
+
+
+class SumPotential(Potential):
+    """Weighted sum of several potentials evaluated on the same Cα coordinates.
+
+    Lets membrane guidance be combined with BioEmu's own physicality potentials
+    (chain-break / clash), which is what keeps an unbounded membrane term from
+    simply stretching the peptide apart: the Ez potential rewards moving charged
+    residues infinitely far from the bilayer, and only a chain-integrity term
+    opposes that.
+
+    Every sub-potential must accept ``(ca_pos_nm, t=..., sequence=...)`` and return
+    one energy per structure, which is true of both `EzMembranePotential` and the
+    upstream `UmbrellaPotential`.
+    """
+
+    def __init__(self, potentials, weights=None, guidance_steering: bool = False, **_: Any) -> None:
+        self.potentials = list(potentials)
+        if not self.potentials:
+            raise ValueError("SumPotential needs at least one potential.")
+        self.weights = [1.0] * len(self.potentials) if weights is None else list(weights)
+        if len(self.weights) != len(self.potentials):
+            raise ValueError(
+                f"Got {len(self.weights)} weights for {len(self.potentials)} potentials."
+            )
+        self.guidance_steering = guidance_steering
+
+    def __call__(self, ca_pos_nm: torch.Tensor, *, t=None, sequence=None) -> torch.Tensor:
+        total = None
+        for w, p in zip(self.weights, self.potentials):
+            e = w * p(ca_pos_nm, t=t, sequence=sequence)
+            total = e if total is None else total + e
+        return total
+
+    def terms(self, ca_pos_nm: torch.Tensor, *, t=None, sequence=None) -> dict[str, torch.Tensor]:
+        """Per-term energies, for diagnosing which term dominates the gradient."""
+        return {
+            f"{i}_{type(p).__name__}": (w * p(ca_pos_nm, t=t, sequence=sequence)).detach()
+            for i, (w, p) in enumerate(zip(self.weights, self.potentials))
+        }
+
+    def loss_fn(self, x: torch.Tensor) -> torch.Tensor:
+        return x
+
+    def energy_from_cv(self, cv_values: torch.Tensor, t: float | None = None) -> torch.Tensor:
+        raise NotImplementedError("SumPotential has no single collective variable.")
