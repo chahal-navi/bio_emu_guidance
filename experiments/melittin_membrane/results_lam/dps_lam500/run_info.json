@@ -1,0 +1,29 @@
+{
+  "run": "dps_lam500",
+  "config": {
+    "_target_": "bioemu.denoiser.membrane_guided_dpm_solver",
+    "_partial_": true,
+    "eps_t": 0.001,
+    "max_t": 0.99,
+    "N": 100,
+    "noise": 0.0,
+    "guidance_scale": 500.0,
+    "guidance_t_max": 0.8,
+    "guidance_t_min": 0.0,
+    "guide_midpoint": true,
+    "backprop_through_model": true,
+    "max_guidance_ratio": 0.5,
+    "potential": {
+      "_target_": "bioemu.steering.custom_potentials.EzMembranePotential",
+      "frame": "optimize",
+      "weight": 1.0
+    }
+  },
+  "sequence": "GIGAVLKVLTTGLPALISWIKRKRQQ",
+  "num_samples": 50,
+  "model_name": "bioemu-v1.1",
+  "seed": 0,
+  "wall_time_s": 45.4841194152832,
+  "gpu": "NVIDIA GeForce RTX 4090",
+  "peak_gpu_mem_gb": 2.671305728
+}

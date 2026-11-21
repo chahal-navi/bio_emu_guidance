@@ -1,0 +1,55 @@
+{
+  "run": "smc",
+  "config": {
+    "_target_": "bioemu.steering.dpm_smc.dpm_solver_smc",
+    "_partial_": true,
+    "eps_t": 0.001,
+    "max_t": 0.99,
+    "N": 100,
+    "noise": 0.5,
+    "fk_potentials": [
+      {
+        "_target_": "bioemu.steering.custom_potentials.EzMembranePotential",
+        "frame": "optimize",
+        "weight": 1.69
+      },
+      {
+        "_target_": "bioemu.steering.UmbrellaPotential",
+        "cv": {
+          "_target_": "bioemu.steering.CaCaDistance"
+        },
+        "target": 0.38,
+        "flatbottom": 0.1,
+        "slope": 10.0,
+        "order": 1,
+        "linear_from": 0.1,
+        "weight": 1.0
+      },
+      {
+        "_target_": "bioemu.steering.UmbrellaPotential",
+        "cv": {
+          "_target_": "bioemu.steering.PairwiseClash",
+          "min_dist": 0.41,
+          "offset": 3
+        },
+        "target": 0.0,
+        "flatbottom": 0.0,
+        "slope": 30.0,
+        "weight": 1.0
+      }
+    ],
+    "steering_config": {
+      "num_particles": 10,
+      "ess_threshold": 0.5,
+      "start": 0.6,
+      "end": 0.0
+    }
+  },
+  "sequence": "GIGAVLKVLTTGLPALISWIKRKRQQ",
+  "num_samples": 50,
+  "model_name": "bioemu-v1.1",
+  "seed": 0,
+  "wall_time_s": 18.469416618347168,
+  "gpu": "NVIDIA GeForce RTX 4090",
+  "peak_gpu_mem_gb": 0.66782208
+}
