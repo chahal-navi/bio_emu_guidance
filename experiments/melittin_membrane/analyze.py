@@ -29,7 +29,10 @@ import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 import torch  # noqa: E402
 
-from bioemu.convert_chemgraph import _get_physical_traj_indices  # noqa: E402
+from bioemu.convert_chemgraph import (  # noqa: E402
+    _filter_unphysical_traj_masks,
+    _get_physical_traj_indices,
+)
 from bioemu.steering.custom_potentials import EzMembranePotential  # noqa: E402
 
 HERE = Path(__file__).resolve().parent
@@ -105,6 +108,9 @@ def analyze_run(run_dir: Path, pot: EzMembranePotential, device: str) -> tuple[p
 
     physical = np.zeros(S, dtype=bool)
     physical[_get_physical_traj_indices(traj)] = True
+    # Decompose the filter: a single "physical" fraction hides WHICH geometry broke.
+    # ok_* are per-frame "passes this criterion" masks.
+    ok_ca, ok_cn, ok_clash = _filter_unphysical_traj_masks(traj)
     unique = len(np.unique(np.round(ca, 2).reshape(S, -1), axis=0)) / S
 
     df = pd.DataFrame(
@@ -117,6 +123,9 @@ def analyze_run(run_dir: Path, pot: EzMembranePotential, device: str) -> tuple[p
             "depth_hyd_A": depth[:, hyd].mean(1),
             "depth_chg_A": depth[:, chg].mean(1),
             "physical": physical,
+            "ok_ca_seq": ok_ca,      # Ca-Ca sequential distance < 4.5 A
+            "ok_cn_seq": ok_cn,      # C-N sequential distance < 2.0 A
+            "ok_no_clash": ok_clash,  # no inter-residue atom pair < 1.0 A
         }
     )
     per_res = {
@@ -163,6 +172,9 @@ def main() -> None:
         dfs[d.name], metas[d.name] = df, meta
         phys = df[df.physical]
         row = {"method": d.name, "n": len(df), "physical_frac": df.physical.mean(),
+               "break_ca_frac": 1 - df.ok_ca_seq.mean(),
+               "break_cn_frac": 1 - df.ok_cn_seq.mean(),
+               "clash_frac": 1 - df.ok_no_clash.mean(),
                "unique_frac": meta["unique"]}  # fmt: skip
         for col in ["ez_kcal", "helicity", "rg_A", "e2e_A", "kink_deg", "depth_hyd_A", "depth_chg_A"]:
             row[f"{col}_mean"] = phys[col].mean()
@@ -184,16 +196,16 @@ def main() -> None:
         return f"{r[c + '_mean']:.{nd}f} ± {r[c + '_std']:.{nd}f}"
 
     lines = [
-        "| method | n | physical | unique | Ez (kcal/mol) | helicity | Rg (Å) | kink (°) | "
-        "depth hydrophobic (Å) | depth K/R (Å) | Ez all samples | time (s) |",
-        "|---|---|---|---|---|---|---|---|---|---|---|---|",
+        "| method | n | physical | CA break | CN break | clash | Ez (kcal/mol) | helicity | "
+        "Rg (Å) | depth hydrophobic (Å) | time (s) |",
+        "|---|---|---|---|---|---|---|---|---|---|---|",
     ]
     for _, r in summary.iterrows():
         t = f"{r.wall_time_s:.0f}" if pd.notna(r.wall_time_s) else "–"
         lines.append(
-            f"| {r.method} | {r.n} | {r.physical_frac:.2f} | {r.unique_frac:.2f} | {fmt(r, 'ez_kcal')} | "
-            f"{fmt(r, 'helicity')} | {fmt(r, 'rg_A', 1)} | {fmt(r, 'kink_deg', 0)} | "
-            f"{fmt(r, 'depth_hyd_A', 1)} | {fmt(r, 'depth_chg_A', 1)} | {r.ez_all_mean:.2f} | {t} |"
+            f"| {r.method} | {r.n} | {r.physical_frac:.2f} | {r.break_ca_frac:.2f} | "
+            f"{r.break_cn_frac:.2f} | {r.clash_frac:.2f} | {fmt(r, 'ez_kcal')} | "
+            f"{fmt(r, 'helicity')} | {fmt(r, 'rg_A', 1)} | {fmt(r, 'depth_hyd_A', 1)} | {t} |"
         )
     (out / "summary.md").write_text("\n".join(lines) + "\n")
     print("\n".join(lines))
