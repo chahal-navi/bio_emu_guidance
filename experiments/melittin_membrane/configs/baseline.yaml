@@ -1,0 +1,8 @@
+# Unguided baseline: same DPM-Solver-2 integrator and step count as dps.yaml (potential=None
+# makes membrane_guided_dpm_solver numerically identical to bioemu.denoiser.dpm_solver).
+_target_: bioemu.denoiser.membrane_guided_dpm_solver
+_partial_: true
+eps_t: 0.001
+max_t: 0.99
+N: 100
+noise: 0.0

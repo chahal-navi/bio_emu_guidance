@@ -1,0 +1,18 @@
+# Path B: DPS gradient guidance on the Tweedie estimate x0_hat.
+# guidance_scale = 1/kT = 1.69 mol/kcal (298 K) is a Boltzmann tilt p(x) exp(-E_Ez(x)/kT).
+_target_: bioemu.denoiser.membrane_guided_dpm_solver
+_partial_: true
+eps_t: 0.001
+max_t: 0.99
+N: 100
+noise: 0.0
+guidance_scale: 1.69
+guidance_t_max: 1.0
+guidance_t_min: 0.0
+guide_midpoint: true
+backprop_through_model: true
+max_guidance_norm: null
+potential:
+  _target_: bioemu.steering.custom_potentials.EzMembranePotential
+  frame: optimize
+  weight: 1.0
