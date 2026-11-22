@@ -40,6 +40,7 @@ from dataclasses import dataclass, field
 
 import torch
 
+from .potentials import Potential
 from .custom_potentials import (
     ONE_TO_THREE,
     kabsch,
@@ -417,3 +418,65 @@ def reference_frame(ca_A: torch.Tensor, ref_ca_A: torch.Tensor) -> tuple[torch.T
         normal = rot[:, :, 2].to(ca_A.dtype)
         center = (-tran[:, 2]).to(ca_A.dtype)
     return normal.detach(), center.detach()
+
+
+class ReferenceFramePotential(Potential):
+    """Adapter making any objective in this module usable as a BioEmu steering Potential,
+    with its membrane frame transferred from an OPM-oriented reference structure.
+
+    This is the configuration the objective screen recommends: searching for the frame
+    per structure was measured to recover membrane normals 66-83 degrees from the
+    experimental one, and under that frame most objectives could be improved by stretching
+    the peptide. Transferring the frame removes both problems.
+
+    The Kabsch superposition is detached, so the gradient reaching the sampler is the
+    partial derivative at a fixed membrane placement: guidance changes the conformation
+    rather than trying to re-pose the molecule.
+
+    Args:
+        objective: key from OBJECTIVES_BY_KEY, e.g. "combined" or "moment_alignment".
+        reference_pdb: OPM-oriented PDB whose frame is transferred (midplane z = 0).
+        sequence: fallback sequence when the batch does not carry one.
+        weight: multiplier on the returned energy.
+    """
+
+    def __init__(
+        self,
+        objective: str = "combined",
+        reference_pdb: str | None = None,
+        sequence: str | None = None,
+        weight: float = 1.0,
+        guidance_steering: bool = False,
+        **_,
+    ) -> None:
+        if objective not in OBJECTIVES_BY_KEY:
+            raise ValueError(f"unknown objective {objective!r}; have {sorted(OBJECTIVES_BY_KEY)}")
+        if reference_pdb is None:
+            raise ValueError("ReferenceFramePotential requires reference_pdb (an OPM file)")
+        self.objective_key = objective
+        self.objective = OBJECTIVES_BY_KEY[objective]
+        self.reference_pdb = reference_pdb
+        self.ref_ca_A = load_reference_ca(reference_pdb)
+        self.sequence = sequence
+        self.weight = weight
+        self.guidance_steering = guidance_steering
+
+    def __call__(self, ca_pos_nm: torch.Tensor, *, t=None, sequence=None) -> torch.Tensor:
+        seq = sequence or self.sequence
+        if seq is None:
+            raise ValueError("ReferenceFramePotential needs a sequence")
+        ref = self.ref_ca_A.to(device=ca_pos_nm.device, dtype=ca_pos_nm.dtype)
+        if ca_pos_nm.shape[-2] != ref.shape[0]:
+            raise ValueError(
+                f"reference has {ref.shape[0]} residues but coordinates have "
+                f"{ca_pos_nm.shape[-2]}; the Kabsch transfer needs a matching reference."
+            )
+        normal, center = reference_frame(ca_pos_nm * 10.0, ref)
+        energy, _ = self.objective(ca_pos_nm, sequence=seq, normal=normal, center=center)
+        return self.weight * energy
+
+    def loss_fn(self, x: torch.Tensor) -> torch.Tensor:
+        return x
+
+    def energy_from_cv(self, cv_values: torch.Tensor, t: float | None = None) -> torch.Tensor:
+        raise NotImplementedError("ReferenceFramePotential has no single collective variable.")

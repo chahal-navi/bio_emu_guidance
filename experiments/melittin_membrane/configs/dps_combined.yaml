@@ -1,0 +1,26 @@
+# DPS gradient guidance with the combined objective, membrane frame transferred by Kabsch
+# from the OPM-oriented melittin structure (2mlt_opm.pdb, midplane z=0).
+#
+# Both choices come from the objective screen (objective_functions_report.html):
+#   - the frame is transferred, not searched: searching recovered membrane normals 66-83
+#     deg from the experimental one and let objectives be improved by stretching the chain.
+#   - combined passed the screen under that frame.
+# No physicality terms here deliberately: the screen predicts this objective resists
+# stretching, and adding chain/clash terms would mask whether that prediction holds.
+_target_: bioemu.denoiser.membrane_guided_dpm_solver
+_partial_: true
+eps_t: 0.001
+max_t: 0.99
+N: 100
+noise: 0.0
+guidance_scale: 20.0
+guidance_t_max: 0.8
+guidance_t_min: 0.0
+guide_midpoint: true
+backprop_through_model: true
+max_guidance_ratio: 0.5
+potential:
+  _target_: bioemu.steering.membrane_objectives.ReferenceFramePotential
+  objective: combined
+  reference_pdb: ${oc.env:BIOEMU_OPM_REF}
+  sequence: GIGAVLKVLTTGLPALISWIKRKRQQ
