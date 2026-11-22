@@ -1,0 +1,283 @@
+{
+  "n_structures": 650,
+  "helicity_range": [
+    0.0,
+    0.9230769230769231
+  ],
+  "reference": "2MLT.pdb chain 0",
+  "opm_reference": "2mlt_opm.pdb",
+  "sequence": "GIGAVLKVLTTGLPALISWIKRKRQQ",
+  "objectives": [
+    {
+      "key": "ez_ca",
+      "name": "Ez depth potential (Ca)",
+      "rationale": "Senes et al. 2007 depth potential on Ca atoms. The control: this is what we guided with, and it rewarded unfolding and chain-breaking.",
+      "couples_residues": false,
+      "mean": -2.7891178131103516,
+      "std": 0.35331854224205017,
+      "best": -4.163978576660156,
+      "worst": -1.581146001815796,
+      "t1_r_helicity": 0.5210140164243009,
+      "t1_p": 1.63347063954891e-46,
+      "t2_stretch": {
+        "1.0": -2.779298782348633,
+        "1.5": -3.1438231468200684,
+        "2.0": -3.3228821754455566,
+        "3.0": -3.4785125255584717
+      },
+      "t3_expel": {
+        "0.0": -2.779298782348633,
+        "20.0": -2.779298782348633,
+        "60.0": -2.779298782348633,
+        "200.0": -2.779298782348633
+      },
+      "t5_headroom_sd": 3.8912782669067383,
+      "t6_frame": {
+        "normal_err_deg": 74.03798548194811,
+        "center_err_A": 2.341161012649536
+      },
+      "t4_ref_score": -2.6504151821136475,
+      "t4_ref_percentile": 40.61538461538461
+    },
+    {
+      "key": "ez_clamped",
+      "name": "Ez, per-residue reward clamped",
+      "rationale": "Ez with each residue's contribution clamped to [floor, 0]. Removes the gain from expelling a residue to infinity while keeping the Ez shape.",
+      "couples_residues": false,
+      "mean": -6.594079971313477,
+      "std": 0.01955310069024563,
+      "best": -6.634476184844971,
+      "worst": -6.458492755889893,
+      "t1_r_helicity": 0.06467490145032825,
+      "t1_p": 0.0994667676621629,
+      "t2_stretch": {
+        "1.0": -6.594770431518555,
+        "1.5": -6.603062152862549,
+        "2.0": -6.605419158935547,
+        "3.0": -6.603898048400879
+      },
+      "t3_expel": {
+        "0.0": -6.594770431518555,
+        "20.0": -6.594770431518555,
+        "60.0": -6.594770908355713,
+        "200.0": -6.594770431518555
+      },
+      "t5_headroom_sd": 2.065974712371826,
+      "t6_frame": {
+        "normal_err_deg": 82.96359311874346,
+        "center_err_A": 3.245237350463867
+      },
+      "t4_ref_score": -6.5967631340026855,
+      "t4_ref_percentile": 58.61538461538461
+    },
+    {
+      "key": "ez_anchored",
+      "name": "Ez + centroid anchor",
+      "rationale": "Ez plus a harmonic penalty keeping the peptide centroid at the midplane, blocking the 'push the whole peptide out of the membrane' solution.",
+      "couples_residues": false,
+      "mean": -2.0972464084625244,
+      "std": 0.4541335701942444,
+      "best": -3.509938955307007,
+      "worst": 0.2383134365081787,
+      "t1_r_helicity": -0.009707941106362306,
+      "t1_p": 0.8048816524345214,
+      "t2_stretch": {
+        "1.0": -2.1062517166137695,
+        "1.5": -2.6035125255584717,
+        "2.0": -2.7615084648132324,
+        "3.0": -2.843514919281006
+      },
+      "t3_expel": {
+        "0.0": -2.1062517166137695,
+        "20.0": -2.1062512397766113,
+        "60.0": -2.1062514781951904,
+        "200.0": -2.1062512397766113
+      },
+      "t5_headroom_sd": 3.1107423305511475,
+      "t6_frame": {
+        "normal_err_deg": 82.09679209412326,
+        "center_err_A": 3.7362496852874756
+      },
+      "t4_ref_score": -2.3125386238098145,
+      "t4_ref_percentile": 76.3076923076923
+    },
+    {
+      "key": "depth_contrast",
+      "name": "Amphipathic depth contrast",
+      "rationale": "Mean depth of polar minus mean depth of hydrophobic residues. A difference of means, so global translation is free and total expulsion scores zero.",
+      "couples_residues": false,
+      "mean": -15.848835945129395,
+      "std": 3.3925206661224365,
+      "best": -27.548473358154297,
+      "worst": -5.971004486083984,
+      "t1_r_helicity": 0.17498173022074373,
+      "t1_p": 7.214697395705873e-06,
+      "t2_stretch": {
+        "1.0": -15.926620483398438,
+        "1.5": -23.892053604125977,
+        "2.0": -31.86192512512207,
+        "3.0": -46.96840286254883
+      },
+      "t3_expel": {
+        "0.0": -15.926620483398438,
+        "20.0": -15.92662239074707,
+        "60.0": -15.92662239074707,
+        "200.0": -15.926620483398438
+      },
+      "t5_headroom_sd": 3.4486560821533203,
+      "t6_frame": {
+        "normal_err_deg": 65.63802243491071,
+        "center_err_A": 45.909034729003906
+      },
+      "t4_ref_score": -15.903976440429688,
+      "t4_ref_percentile": 45.38461538461539
+    },
+    {
+      "key": "burial_saturating",
+      "name": "Saturating hydrophobic burial",
+      "rationale": "Hydrophobicity-weighted smooth indicator of being inside the bilayer core. Bounded on both sides: no reward for infinite depth or infinite distance.",
+      "couples_residues": false,
+      "mean": -9.182429313659668,
+      "std": 0.6571345329284668,
+      "best": -11.80911636352539,
+      "worst": -6.206314563751221,
+      "t1_r_helicity": 0.5068735809540648,
+      "t1_p": 1.0105149022730113e-43,
+      "t2_stretch": {
+        "1.0": -9.196309089660645,
+        "1.5": -9.769883155822754,
+        "2.0": -9.954538345336914,
+        "3.0": -10.034590721130371
+      },
+      "t3_expel": {
+        "0.0": -9.196309089660645,
+        "20.0": -9.196310043334961,
+        "60.0": -9.196310043334961,
+        "200.0": -9.196310043334961
+      },
+      "t5_headroom_sd": 3.997183084487915,
+      "t6_frame": {
+        "normal_err_deg": 75.96586008392308,
+        "center_err_A": 6.288242340087891
+      },
+      "t4_ref_score": -9.039839744567871,
+      "t4_ref_percentile": 51.84615384615384
+    },
+    {
+      "key": "hydrophobic_moment",
+      "name": "Hydrophobic moment |mu_H|",
+      "rationale": "Eisenberg amphipathic moment from backbone geometry. Requires COHERENT radial directions, so unfolding destroys it. Needs no membrane frame.",
+      "couples_residues": true,
+      "mean": -6.120419979095459,
+      "std": 1.7988742589950562,
+      "best": -11.692633628845215,
+      "worst": -0.8528923988342285,
+      "t1_r_helicity": -0.4212903886247407,
+      "t1_p": 2.3706036122993884e-29,
+      "t2_stretch": {
+        "1.0": -6.1124420166015625,
+        "1.5": -6.137240409851074,
+        "2.0": -6.022335052490234,
+        "3.0": -5.696497440338135
+      },
+      "t3_expel": {},
+      "t5_headroom_sd": 3.097611427307129,
+      "t6_frame": {},
+      "t4_ref_score": -5.937189102172852,
+      "t4_ref_percentile": 39.69230769230769
+    },
+    {
+      "key": "moment_alignment",
+      "name": "Moment aligned to membrane normal",
+      "rationale": "Hydrophobic moment projected on the membrane normal: rewards an amphipathic helix presenting its hydrophobic face to the bilayer core.",
+      "couples_residues": true,
+      "mean": -6.120419979095459,
+      "std": 1.7988742589950562,
+      "best": -11.692632675170898,
+      "worst": -0.8528923988342285,
+      "t1_r_helicity": -0.42129038960218507,
+      "t1_p": 2.370602837824934e-29,
+      "t2_stretch": {
+        "1.0": -6.1124420166015625,
+        "1.5": -6.137240409851074,
+        "2.0": -6.022335529327393,
+        "3.0": -5.696497440338135
+      },
+      "t3_expel": {
+        "0.0": -6.1124420166015625,
+        "20.0": -6.1124420166015625,
+        "60.0": -6.1124420166015625,
+        "200.0": -6.1124420166015625
+      },
+      "t5_headroom_sd": 3.0976109504699707,
+      "t6_frame": {
+        "normal_err_deg": 38.840157713193875,
+        "center_err_A": 0.0
+      },
+      "t4_ref_score": -5.937189102172852,
+      "t4_ref_percentile": 39.69230769230769
+    },
+    {
+      "key": "combined_moment_heavy",
+      "name": "Burial + moment (moment-weighted 3x)",
+      "rationale": "Same two terms, but with the coupling term dominant. Included to find the weight at which the structure-preserving term overrides the gameable one.",
+      "couples_residues": true,
+      "mean": -27.543689727783203,
+      "std": 5.325233459472656,
+      "best": -44.948394775390625,
+      "worst": -10.861900329589844,
+      "t1_r_helicity": -0.36438986252083705,
+      "t1_p": 7.65688301111062e-22,
+      "t2_stretch": {
+        "1.0": -27.53363609313965,
+        "1.5": -28.2039737701416,
+        "2.0": -28.46221923828125,
+        "3.0": -28.645721435546875
+      },
+      "t3_expel": {
+        "0.0": -27.53363609313965,
+        "20.0": -27.53363609313965,
+        "60.0": -27.53363609313965,
+        "200.0": -27.53363800048828
+      },
+      "t5_headroom_sd": 3.268345832824707,
+      "t6_frame": {
+        "normal_err_deg": 75.96586008392308,
+        "center_err_A": 6.288242340087891
+      },
+      "t4_ref_score": -26.85140609741211,
+      "t4_ref_percentile": 41.23076923076923
+    },
+    {
+      "key": "combined",
+      "name": "Saturating burial + moment",
+      "rationale": "Burial term places the peptide in the bilayer; moment term requires it to stay a folded amphipathic helix to collect the reward.",
+      "couples_residues": true,
+      "mean": -12.24263858795166,
+      "std": 1.0204271078109741,
+      "best": -15.71681022644043,
+      "worst": -8.729669570922852,
+      "t1_r_helicity": -0.044922447352565426,
+      "t1_p": 0.25275839172100006,
+      "t2_stretch": {
+        "1.0": -12.252531051635742,
+        "1.5": -12.842231750488281,
+        "2.0": -13.039153099060059,
+        "3.0": -13.136445999145508
+      },
+      "t3_expel": {
+        "0.0": -12.252531051635742,
+        "20.0": -12.252531051635742,
+        "60.0": -12.252531051635742,
+        "200.0": -12.252531051635742
+      },
+      "t5_headroom_sd": 3.4046249389648438,
+      "t6_frame": {
+        "normal_err_deg": 75.96586008392308,
+        "center_err_A": 6.288242340087891
+      },
+      "t4_ref_score": -12.008434295654297,
+      "t4_ref_percentile": 36.769230769230774
+    }
+  ]
+}

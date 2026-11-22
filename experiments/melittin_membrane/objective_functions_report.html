@@ -1,0 +1,410 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Membrane Objective Validation</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: single-column technical report; bilayer-banding motif echoes the z = +/-15.4 A slab */
+:root {
+  --bg:#fbfbfa; --panel:#ffffff; --ink:#1a1c1b; --ink-2:#51574f; --ink-3:#7d837a;
+  --line:#e3e5df; --accent:#1f6f6b; --core:#eef3f1;
+  --good:#0ca30c; --crit:#d03b3b; --warn:#fab219;
+  --f-disp:'Space Grotesk',system-ui,sans-serif;
+  --f-body:'Inter',system-ui,sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:#131514; --panel:#1b1e1c; --ink:#edefea; --ink-2:#b4bbb2; --ink-3:#848b82;
+    --line:#2d322e; --accent:#5fb5ae; --core:#1f2523; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:#131514; --panel:#1b1e1c; --ink:#edefea; --ink-2:#b4bbb2; --ink-3:#848b82;
+  --line:#2d322e; --accent:#5fb5ae; --core:#1f2523; color-scheme: dark;
+}
+body { background:var(--bg); color:var(--ink); font-family:var(--f-body); line-height:1.6;
+  margin:0; font-size:15px; }
+.wrap { max-width:860px; margin:0 auto;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+  padding-block:40px 72px; }
+h1 { font-family:var(--f-disp); font-size:clamp(28px,5vw,40px); line-height:1.12; margin:0 0 10px;
+  letter-spacing:-0.02em; text-wrap:balance; }
+h2 { font-family:var(--f-disp); font-size:21px; margin:52px 0 6px; letter-spacing:-0.01em; }
+h3 { font-family:var(--f-disp); font-size:15px; margin:0; }
+p { margin:0 0 14px; max-width:66ch; }
+.eyebrow { font-size:11px; letter-spacing:0.14em; text-transform:uppercase;
+  color:var(--accent); font-weight:600; margin-bottom:14px; }
+.lede { font-size:17px; color:var(--ink-2); max-width:64ch; }
+.sub { color:var(--ink-3); font-size:13px; margin:-2px 0 18px; }
+.slab { background:var(--core); border-top:2px solid var(--accent); border-bottom:2px solid var(--accent);
+  padding:20px 22px; margin:26px 0; border-radius:2px; }
+.slab p:last-child { margin-bottom:0; }
+.slab strong { color:var(--ink); }
+table { border-collapse:collapse; width:100%; font-size:13.5px; }
+.tscroll { overflow-x:auto; margin:18px 0 8px; }
+th { text-align:left; font-family:var(--f-disp); font-size:11.5px; letter-spacing:0.05em;
+  text-transform:uppercase; color:var(--ink-3); font-weight:600;
+  border-bottom:1px solid var(--line); padding:0 12px 8px 0; white-space:nowrap; }
+td { border-bottom:1px solid var(--line); padding:11px 12px 11px 0; vertical-align:top; }
+.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+.oname { font-weight:600; }
+.okey { font-family:var(--f-mono); font-size:11.5px; color:var(--ink-3); }
+.badge { font-family:var(--f-disp); font-size:10.5px; font-weight:700; letter-spacing:0.08em;
+  padding:3px 8px; border-radius:3px; color:#fff; white-space:nowrap; }
+.badge.pass { background:var(--good); }
+.badge.fail { background:var(--crit); }
+figure { margin:22px 0 10px; background:var(--panel); border:1px solid var(--line);
+  border-radius:6px; padding:18px 18px 10px; }
+.ct { font-family:var(--f-disp); font-size:14px; font-weight:700; fill:var(--ink); }
+.cs { font-size:11px; fill:var(--ink-3); }
+.cl { font-size:11.5px; fill:var(--ink-2); font-family:var(--f-body); }
+.cv { font-size:11.5px; fill:var(--ink-2); font-family:var(--f-mono); font-weight:500; }
+.axis { stroke:var(--ink-3); stroke-width:1.2; }
+.refline { stroke:var(--ink-3); stroke-width:1; stroke-dasharray:3 3; }
+.cards { display:grid; gap:12px; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); margin-top:18px; }
+.card { background:var(--panel); border:1px solid var(--line); border-radius:6px; padding:15px 16px;
+  min-width:0; border-left:3px solid var(--crit); }
+.card.ok { border-left-color:var(--good); }
+.card header { display:flex; gap:10px; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.rat { font-size:13px; color:var(--ink-2); margin-bottom:9px; }
+.verdict { font-size:13px; margin:0; }
+.card.ok .verdict { color:var(--ink); font-weight:500; }
+ol, ul { max-width:66ch; padding-left:20px; }
+li { margin-bottom:9px; }
+code { font-family:var(--f-mono); font-size:0.9em; background:var(--core); padding:1px 5px;
+  border-radius:3px; }
+.foot { margin-top:56px; padding-top:18px; border-top:1px solid var(--line);
+  font-size:12.5px; color:var(--ink-3); }
+.foot p { max-width:none; }
+</style>
+
+<div class="wrap">
+  <div class="eyebrow">BioEmu membrane guidance · 650 structures</div>
+  <h1>Which objectives can actually guide membrane insertion?</h1>
+  <p class="lede">Nine candidate objectives, screened against generated melittin ensembles and an
+  experimentally-oriented reference, <em>before</em> any of them is used for guidance. Two survive.</p>
+
+  <div class="slab">
+    <p><strong>Headline.</strong> Seven of nine objectives can be improved by physically
+    destroying the peptide — stretching the backbone or unfolding the helix. Only the two
+    hydrophobic-moment objectives resist both. Separately, <strong>every objective that solves for
+    its own membrane placement gets that placement badly wrong</strong>: predicted membrane normals
+    sit 66–83° from the experimentally-determined one, essentially perpendicular to reality.</p>
+  </div>
+
+  <h2>Why this screen exists</h2>
+  <p>We guided BioEmu with the Ez depth potential and it appeared to work — energy improved
+  significantly at high guidance strength. It was an artefact. Measured on the generated
+  ensembles, Ez correlates <em>positively</em> with helicity (r = +0.52), and the structures that
+  fail the physicality filter score <em>better</em> than those that pass. Guidance was lowering the
+  energy by pulling the molecule apart.</p>
+  <p>That failure is structural, not a tuning problem. Ez is additive and per-residue,
+  E = Σ f(type, depth), so nothing in it knows the residues are bonded. The cheapest way to lower
+  it is to gain the freedom to place each residue at its own optimal depth — and both unfolding
+  and chain-breaking buy exactly that freedom. The tests below are built to catch that whole class
+  of failure cheaply, on structures we already had.</p>
+
+  <h2>The tests</h2>
+  <ol>
+    <li><strong>T1 — helix correlation.</strong> Pearson r against DSSP helicity over 650
+    structures spanning 0–92% helix. Melittin binds membranes as an amphipathic helix, so a usable
+    objective must score helical structures better: <code>r &lt; 0</code>.</li>
+    <li><strong>T2 — stretch gaming.</strong> Scale every residue's depth 3× along the membrane
+    normal. This separates residues exactly the way the Ez gradient wanted to, and breaks the
+    chain doing it. A usable objective must get <em>worse</em>.</li>
+    <li><strong>T3 — expulsion gaming.</strong> Translate the whole peptide away from the bilayer.
+    No objective should improve. (All nine passed; translation-invariant by construction.)</li>
+    <li><strong>T4 — reference rank.</strong> Percentile of the experimental structure within the
+    generated ensemble.</li>
+    <li><strong>T5 — headroom.</strong> Gap between ensemble mean and best structure, in standard
+    deviations. Near-zero means guidance has nothing to do.</li>
+    <li><strong>T6 — frame recovery.</strong> Given a structure already in its known membrane
+    frame, does the objective find that frame? Ground truth from OPM: normal = z, midplane = 0.</li>
+  </ol>
+
+  <h2>Results</h2>
+  <div class="tscroll">
+  <table>
+    <thead><tr>
+      <th>Objective</th><th>T1 r(helix)</th><th>T2 stretch</th><th>T6 frame err</th>
+      <th>T5 headroom</th><th>Couples residues</th><th>Verdict</th>
+    </tr></thead>
+    <tbody>
+    <tr>
+      <td><div class="oname">Moment aligned to membrane normal</div><div class="okey">moment_alignment</div></td>
+      <td class="num">-0.421</td>
+      <td class="num">+0.23σ</td>
+      <td class="num">39°</td>
+      <td class="num">3.10σ</td>
+      <td>yes</td>
+      <td><span class="badge pass">PASS</span></td>
+    </tr><tr>
+      <td><div class="oname">Hydrophobic moment |mu_H|</div><div class="okey">hydrophobic_moment</div></td>
+      <td class="num">-0.421</td>
+      <td class="num">+0.23σ</td>
+      <td class="num">—</td>
+      <td class="num">3.10σ</td>
+      <td>yes</td>
+      <td><span class="badge pass">PASS</span></td>
+    </tr><tr>
+      <td><div class="oname">Burial + moment (moment-weighted 3x)</div><div class="okey">combined_moment_heavy</div></td>
+      <td class="num">-0.364</td>
+      <td class="num">-0.21σ</td>
+      <td class="num">76°</td>
+      <td class="num">3.27σ</td>
+      <td>yes</td>
+      <td><span class="badge fail">FAIL</span></td>
+    </tr><tr>
+      <td><div class="oname">Saturating burial + moment</div><div class="okey">combined</div></td>
+      <td class="num">-0.045</td>
+      <td class="num">-0.87σ</td>
+      <td class="num">76°</td>
+      <td class="num">3.40σ</td>
+      <td>yes</td>
+      <td><span class="badge fail">FAIL</span></td>
+    </tr><tr>
+      <td><div class="oname">Ez + centroid anchor</div><div class="okey">ez_anchored</div></td>
+      <td class="num">-0.010</td>
+      <td class="num">-1.62σ</td>
+      <td class="num">82°</td>
+      <td class="num">3.11σ</td>
+      <td>no</td>
+      <td><span class="badge fail">FAIL</span></td>
+    </tr><tr>
+      <td><div class="oname">Ez, per-residue reward clamped</div><div class="okey">ez_clamped</div></td>
+      <td class="num">+0.065</td>
+      <td class="num">-0.47σ</td>
+      <td class="num">83°</td>
+      <td class="num">2.07σ</td>
+      <td>no</td>
+      <td><span class="badge fail">FAIL</span></td>
+    </tr><tr>
+      <td><div class="oname">Amphipathic depth contrast</div><div class="okey">depth_contrast</div></td>
+      <td class="num">+0.175</td>
+      <td class="num">-9.15σ</td>
+      <td class="num">66°</td>
+      <td class="num">3.45σ</td>
+      <td>no</td>
+      <td><span class="badge fail">FAIL</span></td>
+    </tr><tr>
+      <td><div class="oname">Saturating hydrophobic burial</div><div class="okey">burial_saturating</div></td>
+      <td class="num">+0.507</td>
+      <td class="num">-1.28σ</td>
+      <td class="num">76°</td>
+      <td class="num">4.00σ</td>
+      <td>no</td>
+      <td><span class="badge fail">FAIL</span></td>
+    </tr><tr>
+      <td><div class="oname">Ez depth potential (Ca)</div><div class="okey">ez_ca</div></td>
+      <td class="num">+0.521</td>
+      <td class="num">-1.98σ</td>
+      <td class="num">74°</td>
+      <td class="num">3.89σ</td>
+      <td>no</td>
+      <td><span class="badge fail">FAIL</span></td>
+    </tr>
+    </tbody>
+  </table>
+  </div>
+  <p class="sub">T2 negative = stretching improves the score. T6 is the angle from the true
+  membrane normal; frame-free objectives have no entry.</p>
+
+  <figure><svg viewBox="0 0 760 422" role="img" aria-label="T1 — Does the objective reward the folded helix?" style="width:100%;height:auto;max-width:100%">
+<text x="0" y="18" class="ct">T1 — Does the objective reward the folded helix?</text>
+<text x="0" y="36" class="cs">Pearson r between objective and DSSP helicity across 650 generated structures. Melittin's membrane-bound state is helical, so a usable objective needs r &lt; 0.</text>
+<line x1="420.8" y1="38" x2="420.8" y2="392" class="axis"/>
+<text x="178" y="65" class="cl" text-anchor="end">Moment x normal</text>
+<rect x="225.0" y="50" width="195.8" height="22" rx="3" fill="#0ca30c" opacity="0.92"/>
+<text x="218.0" y="65" class="cv" text-anchor="end">-0.42</text>
+<text x="178" y="103" class="cl" text-anchor="end">Hydrophobic moment</text>
+<rect x="225.0" y="88" width="195.8" height="22" rx="3" fill="#0ca30c" opacity="0.92"/>
+<text x="218.0" y="103" class="cv" text-anchor="end">-0.42</text>
+<text x="178" y="141" class="cl" text-anchor="end">Burial + 3x moment</text>
+<rect x="251.5" y="126" width="169.3" height="22" rx="3" fill="#0ca30c" opacity="0.92"/>
+<text x="244.5" y="141" class="cv" text-anchor="end">-0.36</text>
+<text x="178" y="179" class="cl" text-anchor="end">Burial + moment</text>
+<rect x="399.9" y="164" width="20.9" height="22" rx="3" fill="#0ca30c" opacity="0.92"/>
+<text x="392.9" y="179" class="cv" text-anchor="end">-0.04</text>
+<text x="178" y="217" class="cl" text-anchor="end">Ez + anchor</text>
+<rect x="416.3" y="202" width="4.5" height="22" rx="3" fill="#0ca30c" opacity="0.92"/>
+<text x="409.3" y="217" class="cv" text-anchor="end">-0.01</text>
+<text x="178" y="255" class="cl" text-anchor="end">Ez clamped</text>
+<rect x="420.8" y="240" width="30.1" height="22" rx="3" fill="#d03b3b" opacity="0.92"/>
+<text x="457.9" y="255" class="cv" text-anchor="start">+0.06</text>
+<text x="178" y="293" class="cl" text-anchor="end">Depth contrast</text>
+<rect x="420.8" y="278" width="81.3" height="22" rx="3" fill="#d03b3b" opacity="0.92"/>
+<text x="509.1" y="293" class="cv" text-anchor="start">+0.17</text>
+<text x="178" y="331" class="cl" text-anchor="end">Saturating burial</text>
+<rect x="420.8" y="316" width="235.6" height="22" rx="3" fill="#d03b3b" opacity="0.92"/>
+<text x="663.4" y="331" class="cv" text-anchor="start">+0.51</text>
+<text x="178" y="369" class="cl" text-anchor="end">Ez (Ca)</text>
+<rect x="420.8" y="354" width="242.1" height="22" rx="3" fill="#d03b3b" opacity="0.92"/>
+<text x="670.0" y="369" class="cv" text-anchor="start">+0.52</text>
+<text x="420.8" y="406" class="cl" text-anchor="middle">0</text>
+<text x="760" y="406" class="cl" text-anchor="end">rewards helix → good</text>
+</svg></figure>
+  <figure><svg viewBox="0 0 760 422" role="img" aria-label="T2 — Can the objective be gamed by stretching the chain?" style="width:100%;height:auto;max-width:100%">
+<text x="0" y="18" class="ct">T2 — Can the objective be gamed by stretching the chain?</text>
+<text x="0" y="36" class="cs">Score change when every residue's depth is scaled 3x along the membrane normal, in ensemble standard deviations. Negative = stretching IMPROVES the score = gameable.</text>
+<line x1="652.2" y1="38" x2="652.2" y2="392" class="axis"/>
+<text x="178" y="65" class="cl" text-anchor="end">Depth contrast</text>
+<rect x="225.0" y="50" width="427.1" height="22" rx="3" fill="#d03b3b" opacity="0.92"/>
+<text x="218.0" y="65" class="cv" text-anchor="end">-9.15σ</text>
+<text x="178" y="103" class="cl" text-anchor="end">Ez (Ca)</text>
+<rect x="559.8" y="88" width="92.4" height="22" rx="3" fill="#d03b3b" opacity="0.92"/>
+<text x="552.8" y="103" class="cv" text-anchor="end">-1.98σ</text>
+<text x="178" y="141" class="cl" text-anchor="end">Ez + anchor</text>
+<rect x="576.4" y="126" width="75.8" height="22" rx="3" fill="#d03b3b" opacity="0.92"/>
+<text x="569.4" y="141" class="cv" text-anchor="end">-1.62σ</text>
+<text x="178" y="179" class="cl" text-anchor="end">Saturating burial</text>
+<rect x="592.6" y="164" width="59.5" height="22" rx="3" fill="#d03b3b" opacity="0.92"/>
+<text x="585.6" y="179" class="cv" text-anchor="end">-1.28σ</text>
+<text x="178" y="217" class="cl" text-anchor="end">Burial + moment</text>
+<rect x="611.7" y="202" width="40.4" height="22" rx="3" fill="#d03b3b" opacity="0.92"/>
+<text x="604.7" y="217" class="cv" text-anchor="end">-0.87σ</text>
+<text x="178" y="255" class="cl" text-anchor="end">Ez clamped</text>
+<rect x="630.4" y="240" width="21.8" height="22" rx="3" fill="#d03b3b" opacity="0.92"/>
+<text x="623.4" y="255" class="cv" text-anchor="end">-0.47σ</text>
+<text x="178" y="293" class="cl" text-anchor="end">Burial + 3x moment</text>
+<rect x="642.4" y="278" width="9.7" height="22" rx="3" fill="#d03b3b" opacity="0.92"/>
+<text x="635.4" y="293" class="cv" text-anchor="end">-0.21σ</text>
+<text x="178" y="331" class="cl" text-anchor="end">Hydrophobic moment</text>
+<rect x="652.2" y="316" width="10.8" height="22" rx="3" fill="#0ca30c" opacity="0.92"/>
+<text x="670.0" y="331" class="cv" text-anchor="start">+0.23σ</text>
+<text x="178" y="369" class="cl" text-anchor="end">Moment x normal</text>
+<rect x="652.2" y="354" width="10.8" height="22" rx="3" fill="#0ca30c" opacity="0.92"/>
+<text x="670.0" y="369" class="cv" text-anchor="start">+0.23σ</text>
+<text x="652.2" y="406" class="cl" text-anchor="middle">0</text>
+<text x="760" y="406" class="cl" text-anchor="end">worsens → safe</text>
+</svg></figure>
+
+  <div class="slab">
+    <p><strong>The pattern is exactly the hypothesis.</strong> The only objectives that resist both
+    tests are the two that <em>couple residues</em> — the hydrophobic moment is a vector sum over
+    residues, so it needs their radial directions to stay coherent. Unfolding scrambles that
+    coherence and stretching dilutes it, so neither can be used to cheat. Every purely additive
+    per-residue objective, however carefully bounded, remains gameable.</p>
+    <p>Note that <code>ez_clamped</code> and <code>ez_anchored</code> were written specifically to
+    close the escape routes, and both still fail. Bounding the reward was not enough; the problem
+    is additivity itself.</p>
+  </div>
+
+  <h2>The membrane frame is a separate failure</h2>
+  <p>This one was not anticipated. Given the OPM-oriented melittin structure — where the membrane
+  placement is already solved, with the midplane at z = 0 and the bilayer boundary at z = +15.4 Å —
+  every objective that searches for its own frame picks a normal 66–83° away from the true one.
+  Our tilt measurement reproduces OPM's published 65° tilt to within 1°, so the discrepancy is in
+  the objectives, not the measurement.</p>
+
+  <figure><svg viewBox="0 0 760 384" role="img" aria-label="T6 — Does it recover the known membrane placement?" style="width:100%;height:auto;max-width:100%">
+<text x="0" y="18" class="ct">T6 — Does it recover the known membrane placement?</text>
+<text x="0" y="36" class="cs">Angle between the objective's predicted membrane normal and the true normal, given the OPM-oriented melittin structure (ground truth: 0°). 90° = perpendicular to reality.</text>
+<line x1="225.0" y1="38" x2="225.0" y2="354" class="axis"/>
+<line x1="322.4" y1="38" x2="322.4" y2="354" class="refline"/>
+<text x="322.4" y="368" class="cl" text-anchor="middle">20° tolerance</text>
+<text x="178" y="65" class="cl" text-anchor="end">Moment x normal</text>
+<rect x="225.0" y="50" width="189.0" height="22" rx="3" fill="#d03b3b" opacity="0.92"/>
+<text x="421.0" y="65" class="cv" text-anchor="start">+38.84°</text>
+<text x="178" y="103" class="cl" text-anchor="end">Depth contrast</text>
+<rect x="225.0" y="88" width="319.4" height="22" rx="3" fill="#d03b3b" opacity="0.92"/>
+<text x="551.4" y="103" class="cv" text-anchor="start">+65.64°</text>
+<text x="178" y="141" class="cl" text-anchor="end">Ez (Ca)</text>
+<rect x="225.0" y="126" width="360.3" height="22" rx="3" fill="#d03b3b" opacity="0.92"/>
+<text x="592.3" y="141" class="cv" text-anchor="start">+74.04°</text>
+<text x="178" y="179" class="cl" text-anchor="end">Saturating burial</text>
+<rect x="225.0" y="164" width="369.6" height="22" rx="3" fill="#d03b3b" opacity="0.92"/>
+<text x="601.7" y="179" class="cv" text-anchor="start">+75.97°</text>
+<text x="178" y="217" class="cl" text-anchor="end">Burial + 3x moment</text>
+<rect x="225.0" y="202" width="369.6" height="22" rx="3" fill="#d03b3b" opacity="0.92"/>
+<text x="601.7" y="217" class="cv" text-anchor="start">+75.97°</text>
+<text x="178" y="255" class="cl" text-anchor="end">Burial + moment</text>
+<rect x="225.0" y="240" width="369.6" height="22" rx="3" fill="#d03b3b" opacity="0.92"/>
+<text x="601.7" y="255" class="cv" text-anchor="start">+75.97°</text>
+<text x="178" y="293" class="cl" text-anchor="end">Ez + anchor</text>
+<rect x="225.0" y="278" width="399.5" height="22" rx="3" fill="#d03b3b" opacity="0.92"/>
+<text x="631.5" y="293" class="cv" text-anchor="start">+82.10°</text>
+<text x="178" y="331" class="cl" text-anchor="end">Ez clamped</text>
+<rect x="225.0" y="316" width="403.7" height="22" rx="3" fill="#d03b3b" opacity="0.92"/>
+<text x="635.7" y="331" class="cv" text-anchor="start">+82.96°</text>
+<text x="225.0" y="368" class="cl" text-anchor="middle">0</text>
+<text x="760" y="368" class="cl" text-anchor="end"></text>
+</svg></figure>
+
+  <p>This matters beyond the objectives themselves. All of our guidance runs used a per-structure
+  optimised membrane frame, chosen specifically to avoid needing a reference structure. That choice
+  now looks wrong: the optimiser finds whichever placement minimises a flawed objective, not the
+  physical one. A reference-aligned frame — the Kabsch approach, given a correct melittin
+  reference — is the more defensible option, and the OPM file now makes it available.</p>
+
+  <h2>Objective by objective</h2>
+  <div class="cards">
+    <article class="card ok">
+      <header><h3>Moment aligned to membrane normal</h3><span class="badge pass">PASS</span></header>
+      <p class="rat">Hydrophobic moment projected on the membrane normal: rewards an amphipathic helix presenting its hydrophobic face to the bilayer core.</p>
+      <p class="verdict">Survives both gaming tests.</p>
+    </article><article class="card ok">
+      <header><h3>Hydrophobic moment |mu_H|</h3><span class="badge pass">PASS</span></header>
+      <p class="rat">Eisenberg amphipathic moment from backbone geometry. Requires COHERENT radial directions, so unfolding destroys it. Needs no membrane frame.</p>
+      <p class="verdict">Survives both gaming tests.</p>
+    </article><article class="card no">
+      <header><h3>Burial + moment (moment-weighted 3x)</h3><span class="badge fail">FAIL</span></header>
+      <p class="rat">Same two terms, but with the coupling term dominant. Included to find the weight at which the structure-preserving term overrides the gameable one.</p>
+      <p class="verdict">Disqualified: improves by 0.21σ when the chain is stretched; predicts a membrane normal 76° from the true one.</p>
+    </article><article class="card no">
+      <header><h3>Saturating burial + moment</h3><span class="badge fail">FAIL</span></header>
+      <p class="rat">Burial term places the peptide in the bilayer; moment term requires it to stay a folded amphipathic helix to collect the reward.</p>
+      <p class="verdict">Disqualified: improves by 0.87σ when the chain is stretched; predicts a membrane normal 76° from the true one.</p>
+    </article><article class="card no">
+      <header><h3>Ez + centroid anchor</h3><span class="badge fail">FAIL</span></header>
+      <p class="rat">Ez plus a harmonic penalty keeping the peptide centroid at the midplane, blocking the 'push the whole peptide out of the membrane' solution.</p>
+      <p class="verdict">Disqualified: improves by 1.62σ when the chain is stretched; predicts a membrane normal 82° from the true one.</p>
+    </article><article class="card no">
+      <header><h3>Ez, per-residue reward clamped</h3><span class="badge fail">FAIL</span></header>
+      <p class="rat">Ez with each residue's contribution clamped to [floor, 0]. Removes the gain from expelling a residue to infinity while keeping the Ez shape.</p>
+      <p class="verdict">Disqualified: rewards <strong>loss</strong> of helix (r = +0.065); improves by 0.47σ when the chain is stretched; predicts a membrane normal 83° from the true one.</p>
+    </article><article class="card no">
+      <header><h3>Amphipathic depth contrast</h3><span class="badge fail">FAIL</span></header>
+      <p class="rat">Mean depth of polar minus mean depth of hydrophobic residues. A difference of means, so global translation is free and total expulsion scores zero.</p>
+      <p class="verdict">Disqualified: rewards <strong>loss</strong> of helix (r = +0.175); improves by 9.15σ when the chain is stretched; predicts a membrane normal 66° from the true one.</p>
+    </article><article class="card no">
+      <header><h3>Saturating hydrophobic burial</h3><span class="badge fail">FAIL</span></header>
+      <p class="rat">Hydrophobicity-weighted smooth indicator of being inside the bilayer core. Bounded on both sides: no reward for infinite depth or infinite distance.</p>
+      <p class="verdict">Disqualified: rewards <strong>loss</strong> of helix (r = +0.507); improves by 1.28σ when the chain is stretched; predicts a membrane normal 76° from the true one.</p>
+    </article><article class="card no">
+      <header><h3>Ez depth potential (Ca)</h3><span class="badge fail">FAIL</span></header>
+      <p class="rat">Senes et al. 2007 depth potential on Ca atoms. The control: this is what we guided with, and it rewarded unfolding and chain-breaking.</p>
+      <p class="verdict">Disqualified: rewards <strong>loss</strong> of helix (r = +0.521); improves by 1.98σ when the chain is stretched; predicts a membrane normal 74° from the true one.</p>
+    </article>
+  </div>
+
+  <h2>What to do next</h2>
+  <ol>
+    <li><strong>Adopt a reference membrane frame.</strong> Use <code>2mlt_opm.pdb</code> as the
+    Kabsch target instead of solving for the frame. This removes a failure mode that affects every
+    objective equally, and is independent of which objective wins.</li>
+    <li><strong>Build on the hydrophobic moment.</strong> It is the only term that survived, and it
+    survived for a reason worth keeping: it couples residues. Combining it with a placement term
+    needs care — <code>combined_moment_heavy</code> weights the moment 3× and is <em>still</em>
+    gameable, because mixing a gameable term with a safe one leaves the mixture gameable.</li>
+    <li><strong>Re-validate before guiding.</strong> Any new objective goes through this screen
+    first. It runs on existing structures in minutes with no GPU, and it would have caught the
+    original Ez failure before four rounds of sampling.</li>
+    <li><strong>Reconsider the target peptide.</strong> Melittin's unguided ensemble already sits
+    at the limit a connected helix can reach, so headroom is small whatever the objective.</li>
+  </ol>
+
+  <div class="foot">
+    <p><strong>Data.</strong> 650 BioEmu structures (melittin,
+    <code>GIGAVLKVLTTGLPALISWIKRKRQQ</code>) pooled from the baseline, DPS λ∈{1.69, 5, 20, 100, 500},
+    dps_phys, and SMC runs; helicity 0–92%. Reference: <code>2MLT.pdb chain 0</code>.
+    Membrane frame ground truth: <code>2mlt_opm.pdb</code> (OPM entry 149,
+    half-thickness 15.4 Å, peripheral placement, 65° tilt).</p>
+    <p><strong>Limitations.</strong> One peptide, one model checkpoint. T2 and T3 run on a
+    128-structure subset for speed. The OPM orientation is itself a computed placement of an
+    aqueous crystal structure, not a direct measurement — it is the best experimentally-anchored
+    reference available, and no PDB entry of free melittin in a micelle or bilayer exists.
+    Structures are backbone + Cβ only; no side chains were packed, so side-chain depth is
+    approximated throughout.</p>
+    <p>Generated by <code>validate_objectives.py</code> and <code>make_report.py</code>.</p>
+  </div>
+</div>
