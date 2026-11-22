@@ -42,6 +42,7 @@ import torch
 
 from .custom_potentials import (
     ONE_TO_THREE,
+    kabsch,
     EzMembranePotential,
     ez_energy_per_residue,
     ez_parameters,
@@ -164,9 +165,19 @@ class Objective:
 
 # --- 1. Ez on Ca (the control: known-bad) ----------------------------------------------
 def ez_ca(coords_nm, *, sequence, normal=None, center=None):
-    pot = EzMembranePotential(sequence=sequence, frame="optimize", refine_steps=0)
-    out = pot.evaluate(coords_nm, sequence=sequence)
-    return out["energy"], {"depth_A": out["depth_A"], "normal": out["normal"], "center_A": out["center_A"]}
+    ca_A = coords_nm * 10.0
+    resnames = [normalize_resname(s) for s in sequence]
+    params = {k: v.to(ca_A.device) for k, v in ez_parameters(resnames).items()}
+    params = {k: (v.to(ca_A.dtype) if v.dtype != torch.bool else v) for k, v in params.items()}
+
+    def energy_of_z(z):
+        return ez_energy_per_residue(_smooth_abs(z), params).sum(-1)
+
+    if normal is None:
+        normal, center = optimize_frame(ca_A.detach(), energy_of_z)
+    z = torch.einsum("bld,bd->bl", ca_A, normal) - center[:, None]
+    e = ez_energy_per_residue(_smooth_abs(z), params).sum(-1)
+    return e, {"depth_A": z, "normal": normal, "center_A": center}
 
 
 # --- 2. Ez with per-residue reward clamped (removes the "expel to infinity" gain) -------
@@ -233,7 +244,7 @@ def hydrophobic_moment(coords_nm, *, sequence, normal=None, center=None):
 
 # --- 5. Hydrophobic moment ALIGNED with the membrane normal -----------------------------
 def moment_alignment(coords_nm, *, sequence, normal=None, center=None):
-    """-(mu_H . n): rewards an amphipathic helix whose hydrophobic face points INTO the core.
+    """+(mu_H . n): rewards an amphipathic helix whose hydrophobic face points INTO the core.
 
     Combines amphipathicity with orientation. If no frame is supplied the optimal normal is
     simply mu_H itself (the alignment is maximised by n = mu_H/|mu_H|), so this reduces to
@@ -245,12 +256,13 @@ def moment_alignment(coords_nm, *, sequence, normal=None, center=None):
     r_hat = radial_directions(ca_A)
     mu = (h[None, :, None] * r_hat).sum(1)
     if normal is None:
-        n = mu / mu.norm(dim=-1, keepdim=True).clamp(min=_EPS)
-        n = n.detach()
+        # free choice of frame: point the normal opposite the moment, which is the
+        # minimiser of mu . n and makes this reduce to -|mu_H|.
+        n = (-mu / mu.norm(dim=-1, keepdim=True).clamp(min=_EPS)).detach()
     else:
         n = normal
     align = (mu * n).sum(-1)
-    return -align, {"moment_vec": mu, "normal": n, "alignment": align}
+    return align, {"moment_vec": mu, "normal": n, "alignment": align}
 
 
 # --- 6. Amphipathic depth contrast ------------------------------------------------------
@@ -360,3 +372,48 @@ OBJECTIVES: list[Objective] = [
 ]
 
 OBJECTIVES_BY_KEY = {o.key: o for o in OBJECTIVES}
+
+
+# ---------------------------------------------------------------------------------------
+# Reference membrane frame (OPM).
+#
+# The per-structure frame search in `optimize_frame` was measured to recover membrane
+# normals 66-83 degrees away from the experimentally determined one: it finds whichever
+# placement minimises the objective, not the physical placement. Transferring the frame
+# from a structure whose membrane placement is already known is the better option.
+# ---------------------------------------------------------------------------------------
+
+
+def load_reference_ca(pdb_path: str) -> torch.Tensor:
+    """Ca trace of an OPM-oriented structure, (n_res, 3) in Angstrom.
+
+    OPM files are pre-rotated so the bilayer midplane is z = 0 and the hydrocarbon
+    boundary is at |z| = (the "1/2 of bilayer thickness" REMARK). So in this frame the
+    membrane normal is +z and the midplane offset is 0, by construction.
+    """
+    import mdtraj
+
+    tr = mdtraj.load_pdb(pdb_path)
+    ca = [a.index for a in tr.topology.atoms if a.name == "CA"]
+    return torch.tensor(tr.xyz[0, ca, :] * 10.0, dtype=torch.float32)
+
+
+def reference_frame(ca_A: torch.Tensor, ref_ca_A: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+    """Membrane frame transferred from an OPM reference by Kabsch superposition.
+
+    Superimposes each structure onto `ref_ca_A` (which is in the OPM frame, midplane
+    z = 0) and expresses the resulting membrane plane back in the INPUT structure's own
+    coordinates, as (normal, center) with depth z = normal . x - center.
+
+    Derivation: kabsch gives rot, tran with  x @ rot + tran ~= ref, so the aligned
+    z-coordinate is  x . rot[:, 2] + tran[2]. Matching z = n . x - c gives
+    n = rot[:, 2] and c = -tran[2].
+
+    Detached, like `optimize_frame`: the alignment is held fixed when differentiating, so
+    the gradient does not try to re-pose the molecule.
+    """
+    with torch.no_grad():
+        rot, tran = kabsch(ca_A.double(), ref_ca_A.double().expand_as(ca_A))
+        normal = rot[:, :, 2].to(ca_A.dtype)
+        center = (-tran[:, 2]).to(ca_A.dtype)
+    return normal.detach(), center.detach()

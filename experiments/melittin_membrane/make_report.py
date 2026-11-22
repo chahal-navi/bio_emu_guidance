@@ -22,6 +22,11 @@ def esc(s):
     return (s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
 
 
+def load_frames():
+    f = HERE / "objective_validation" / "frame_comparison.json"
+    return json.loads(f.read_text()) if f.exists() else None
+
+
 def load():
     d = json.loads(DATA.read_text())
     objs = []
@@ -153,6 +158,26 @@ def main():
       <p class="verdict">{verdict}</p>
     </article>""")
 
+    fc = load_frames()
+    frame_rows = ""
+    if fc:
+        def cell(v, good, unit=""):
+            if v is None:
+                return '<td class="num">—</td>'
+            col = "var(--good)" if good else "var(--crit)"
+            return f'<td class="num" style="color:{col}">{v:+.2f}{unit}</td>'
+        parts = []
+        for row in fc["objectives"]:
+            parts.append(
+                "<tr><td><div class='oname'>" + esc(SHORT.get(row["key"], row["name"]))
+                + "</div><div class='okey'>" + esc(row["key"]) + "</div></td>"
+                + cell(row.get("r_opt"), (row.get("r_opt") or 0) < 0)
+                + cell(row.get("r_opm"), (row.get("r_opm") or 0) < 0)
+                + cell(row.get("stretch_opt"), (row.get("stretch_opt") or 0) > 0, "σ")
+                + cell(row.get("stretch_opm"), (row.get("stretch_opm") or 0) > 0, "σ")
+                + "</tr>")
+        frame_rows = "".join(parts)
+
     html = f"""<meta name="claude:viewport-fit-sides" content="cover">
 <title>Membrane Objective Validation</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
@@ -240,11 +265,13 @@ code {{ font-family:var(--f-mono); font-size:0.9em; background:var(--core); padd
   experimentally-oriented reference, <em>before</em> any of them is used for guidance. Two survive.</p>
 
   <div class="slab">
-    <p><strong>Headline.</strong> Seven of nine objectives can be improved by physically
-    destroying the peptide — stretching the backbone or unfolding the helix. Only the two
-    hydrophobic-moment objectives resist both. Separately, <strong>every objective that solves for
-    its own membrane placement gets that placement badly wrong</strong>: predicted membrane normals
-    sit 66–83° from the experimentally-determined one, essentially perpendicular to reality.</p>
+    <p><strong>Headline, after the second pass.</strong> The membrane <em>frame</em> was the
+    dominant defect, not the objectives. Letting each objective solve for its own membrane
+    placement produced normals 66–83° from the experimentally determined one, and under that
+    broken frame seven of nine objectives could be improved by tearing the peptide apart.
+    <strong>Transferring the frame from the OPM-oriented melittin structure instead flips every
+    objective to the correct sign on helicity and all but eliminates the gaming</strong> — the
+    original Ez potential included.</p>
   </div>
 
   <h2>Why this screen exists</h2>
@@ -326,20 +353,65 @@ code {{ font-family:var(--f-mono); font-size:0.9em; background:var(--core); padd
     {''.join(cards)}
   </div>
 
+
+  <h2>Part two — fixing the frame</h2>
+  <p>Rather than searching for a membrane placement, transfer it from a structure whose placement
+  is already known. Each generated structure is superimposed by Kabsch onto the OPM-oriented
+  melittin, and the resulting bilayer plane is expressed back in that structure's own coordinates.
+  The superposition is held fixed when differentiating, exactly as the frame search was, so
+  guidance still cannot re-pose the molecule. Verified exact: aligning the reference to itself
+  returns normal = (0, 0, 1) and midplane 0, and a randomly rotated copy reproduces every residue
+  depth to 0.0000 Å.</p>
+
+  <div class="tscroll">
+  <table>
+    <thead><tr>
+      <th rowspan="2">Objective</th>
+      <th colspan="2">r(helicity) — want &lt; 0</th>
+      <th colspan="2">Stretch — want &gt; 0</th>
+    </tr><tr>
+      <th>searched</th><th>OPM frame</th><th>searched</th><th>OPM frame</th>
+    </tr></thead>
+    <tbody>
+    {frame_rows}
+    </tbody>
+  </table>
+  </div>
+
+  <div class="slab">
+    <p><strong>Every objective improves, and most become usable.</strong> Helicity correlations
+    flip from positive to negative across the board. Stretch gaming goes from as bad as −9.05σ to
+    positive almost everywhere. <code>ez_clamped</code> also recovers its dynamic range: under the
+    searched frame its spread was 0.020 — too flat to distinguish any two structures — because it
+    could always find a placement that saturated the clamps. Pinned to the OPM frame it cannot,
+    and the spread rises to 0.562.</p>
+    <p>So the earlier conclusion needs revising. Additivity made the objectives
+    <em>exploitable</em>, but what they exploited was the freedom to move the membrane. Remove
+    that freedom and the plain Ez potential on Cα — the one we started with — scores helices
+    correctly (r = −0.559) and resists stretching (+0.78σ).</p>
+  </div>
+
+  <p class="sub">One caveat on the tilt figures: under the OPM frame the generated ensemble sits
+  at 65 ± 9°, matching OPM's experimental 65° for melittin. That agreement is largely by
+  construction — Kabsch-aligning to a reference with a 65° tilt places helical structures at
+  roughly that tilt. It confirms the transfer works; it is not independent evidence that the
+  generated structures are correctly oriented.</p>
+
   <h2>What to do next</h2>
   <ol>
-    <li><strong>Adopt a reference membrane frame.</strong> Use <code>2mlt_opm.pdb</code> as the
-    Kabsch target instead of solving for the frame. This removes a failure mode that affects every
-    objective equally, and is independent of which objective wins.</li>
-    <li><strong>Build on the hydrophobic moment.</strong> It is the only term that survived, and it
-    survived for a reason worth keeping: it couples residues. Combining it with a placement term
-    needs care — <code>combined_moment_heavy</code> weights the moment 3× and is <em>still</em>
-    gameable, because mixing a gameable term with a safe one leaves the mixture gameable.</li>
-    <li><strong>Re-validate before guiding.</strong> Any new objective goes through this screen
-    first. It runs on existing structures in minutes with no GPU, and it would have caught the
-    original Ez failure before four rounds of sampling.</li>
+    <li><strong>Use the OPM reference frame for all future guidance.</strong> This is done and
+    verified. It is the single change that matters most, and it helps every objective equally.</li>
+    <li><strong>Guide with <code>moment_alignment</code> or <code>combined</code>.</strong>
+    Under the OPM frame <code>moment_alignment</code> has the strongest helicity correlation
+    (−0.677) and a wide spread (3.43), though its stretch margin is thin (−0.10σ, near noise).
+    <code>combined</code> is the balanced choice: −0.567 with a clear +0.32σ stretch margin.</li>
+    <li><strong>Re-run the λ sweep with the fixed frame.</strong> Every guidance result so far used
+    the broken frame, so the entire sweep needs repeating before any of it means anything. That is
+    roughly 30 minutes of GPU time.</li>
+    <li><strong>Re-validate anything new.</strong> The screen runs on existing structures in
+    minutes with no GPU, and would have caught both defects before four rounds of sampling.</li>
     <li><strong>Reconsider the target peptide.</strong> Melittin's unguided ensemble already sits
-    at the limit a connected helix can reach, so headroom is small whatever the objective.</li>
+    near the limit a connected helix can reach, so headroom stays small whatever the objective.</li>
   </ol>
 
   <div class="foot">

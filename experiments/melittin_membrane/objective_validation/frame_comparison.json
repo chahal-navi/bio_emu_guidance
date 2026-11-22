@@ -1,0 +1,101 @@
+{
+  "n_structures": 650,
+  "opm_reference": "2mlt_opm.pdb",
+  "opm_experimental_tilt_deg": 65.0,
+  "ensemble_tilt_under_opm_frame": [
+    64.53752136230469,
+    9.252669334411621
+  ],
+  "objectives": [
+    {
+      "key": "ez_ca",
+      "name": "Ez depth potential (Ca)",
+      "r_opt": 0.5221520162654072,
+      "stretch_opt": -1.9751813411712646,
+      "tilt_opt": "41 +/- 24",
+      "r_opm": -0.5591563997298978,
+      "stretch_opm": 0.7820634245872498,
+      "tilt_opm": "65 +/- 9"
+    },
+    {
+      "key": "ez_clamped",
+      "name": "Ez, per-residue reward clamped",
+      "r_opt": 0.06467490145032825,
+      "stretch_opt": -0.5131115317344666,
+      "tilt_opt": "55 +/- 13",
+      "r_opm": -0.6248645878168397,
+      "stretch_opm": 1.1153626441955566,
+      "tilt_opm": "65 +/- 9"
+    },
+    {
+      "key": "ez_anchored",
+      "name": "Ez + centroid anchor",
+      "r_opt": -0.009707941106362306,
+      "stretch_opt": -1.6006773710250854,
+      "tilt_opt": "21 +/- 15",
+      "r_opm": -0.5591564237397039,
+      "stretch_opm": 0.7820635437965393,
+      "tilt_opm": "65 +/- 9"
+    },
+    {
+      "key": "depth_contrast",
+      "name": "Amphipathic depth contrast",
+      "r_opt": 0.17498173022074373,
+      "stretch_opt": -9.045507431030273,
+      "tilt_opt": "12 +/- 12",
+      "r_opm": -0.4466704025789228,
+      "stretch_opm": 0.4647197127342224,
+      "tilt_opm": "65 +/- 9"
+    },
+    {
+      "key": "burial_saturating",
+      "name": "Saturating hydrophobic burial",
+      "r_opt": 0.5068735809540648,
+      "stretch_opt": -1.1637126207351685,
+      "tilt_opt": "28 +/- 16",
+      "r_opm": -0.5546018769037444,
+      "stretch_opm": 0.46619030833244324,
+      "tilt_opm": "65 +/- 9"
+    },
+    {
+      "key": "hydrophobic_moment",
+      "name": "Hydrophobic moment |mu_H|",
+      "r_opt": -0.4212903886247407,
+      "stretch_opt": null,
+      "tilt_opt": "n/a",
+      "r_opm": -0.4212903886247407,
+      "stretch_opm": null,
+      "tilt_opm": "n/a"
+    },
+    {
+      "key": "moment_alignment",
+      "name": "Moment aligned to membrane normal",
+      "r_opt": -0.42129038960218507,
+      "stretch_opt": 0.23600944876670837,
+      "tilt_opt": "72 +/- 17",
+      "r_opm": -0.67694962717632,
+      "stretch_opm": -0.10226646065711975,
+      "tilt_opm": "65 +/- 9"
+    },
+    {
+      "key": "combined_moment_heavy",
+      "name": "Burial + moment (moment-weighted 3x)",
+      "r_opt": -0.36438986252083705,
+      "stretch_opt": -0.2136775702238083,
+      "tilt_opt": "28 +/- 16",
+      "r_opm": -0.5084583351745798,
+      "stretch_opm": 0.04329106956720352,
+      "tilt_opm": "65 +/- 9"
+    },
+    {
+      "key": "combined",
+      "name": "Saturating burial + moment",
+      "r_opt": -0.044922447352565426,
+      "stretch_opt": -0.8567945957183838,
+      "tilt_opt": "28 +/- 16",
+      "r_opm": -0.5674284356577445,
+      "stretch_opm": 0.3235085606575012,
+      "tilt_opm": "65 +/- 9"
+    }
+  ]
+}
