@@ -1,0 +1,317 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>OPM Frame and Guidance Rerun</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: single-column follow-up report, matching objective_functions_report.html */
+:root {
+  --bg:#fbfbfa; --panel:#ffffff; --ink:#1a1c1b; --ink-2:#51574f; --ink-3:#7d837a;
+  --line:#e3e5df; --accent:#1f6f6b; --core:#eef3f1;
+  --good:#0ca30c; --crit:#d03b3b; --warn:#fab219;
+  --f-disp:'Space Grotesk',system-ui,sans-serif;
+  --f-body:'Inter',system-ui,sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:#131514; --panel:#1b1e1c; --ink:#edefea; --ink-2:#b4bbb2; --ink-3:#848b82;
+    --line:#2d322e; --accent:#5fb5ae; --core:#1f2523; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:#131514; --panel:#1b1e1c; --ink:#edefea; --ink-2:#b4bbb2; --ink-3:#848b82;
+  --line:#2d322e; --accent:#5fb5ae; --core:#1f2523; color-scheme: dark;
+}
+body { background:var(--bg); color:var(--ink); font-family:var(--f-body); line-height:1.6;
+  margin:0; font-size:15px; }
+.wrap { max-width:860px; margin:0 auto;
+  padding-left:max(16px, env(safe-area-inset-left, 0px));
+  padding-right:max(16px, env(safe-area-inset-right, 0px));
+  padding-block:40px 72px; }
+h1 { font-family:var(--f-disp); font-size:clamp(28px,5vw,40px); line-height:1.12; margin:0 0 10px;
+  letter-spacing:-0.02em; text-wrap:balance; }
+h2 { font-family:var(--f-disp); font-size:21px; margin:52px 0 6px; letter-spacing:-0.01em; }
+h3 { font-family:var(--f-disp); font-size:15.5px; margin:26px 0 4px; }
+p { margin:0 0 14px; max-width:66ch; }
+.eyebrow { font-size:11px; letter-spacing:0.14em; text-transform:uppercase;
+  color:var(--accent); font-weight:600; margin-bottom:14px; }
+.lede { font-size:17px; color:var(--ink-2); max-width:64ch; }
+.sub { color:var(--ink-3); font-size:13px; margin:-2px 0 18px; }
+.slab { background:var(--core); border-top:2px solid var(--accent); border-bottom:2px solid var(--accent);
+  padding:20px 22px; margin:26px 0; border-radius:2px; }
+.slab p:last-child { margin-bottom:0; }
+.slab.bad { border-color:var(--crit); }
+table { border-collapse:collapse; width:100%; font-size:13.5px; }
+.tscroll { overflow-x:auto; margin:18px 0 8px; }
+th { text-align:left; font-family:var(--f-disp); font-size:11.5px; letter-spacing:0.05em;
+  text-transform:uppercase; color:var(--ink-3); font-weight:600;
+  border-bottom:1px solid var(--line); padding:0 12px 8px 0; white-space:nowrap; }
+td { border-bottom:1px solid var(--line); padding:10px 12px 10px 0; vertical-align:top; }
+.num { font-family:var(--f-mono); font-variant-numeric:tabular-nums; white-space:nowrap; }
+figure { margin:22px 0 10px; background:var(--panel); border:1px solid var(--line);
+  border-radius:6px; padding:18px; }
+.ct { font-family:var(--f-disp); font-size:14px; font-weight:700; fill:var(--ink); }
+.cs { font-size:11px; fill:var(--ink-3); }
+.cl { font-size:11.5px; fill:var(--ink-2); }
+.cv { font-size:10.5px; fill:var(--ink-2); font-family:var(--f-mono); }
+.axis { stroke:var(--ink-3); stroke-width:1.2; }
+.diagram { background:var(--panel); border:1px solid var(--line); border-radius:6px;
+  padding:16px; margin:20px 0; overflow-x:auto; }
+ol, ul { max-width:66ch; padding-left:20px; }
+li { margin-bottom:10px; }
+code { font-family:var(--f-mono); font-size:0.9em; background:var(--core); padding:1px 5px;
+  border-radius:3px; }
+.foot { margin-top:56px; padding-top:18px; border-top:1px solid var(--line);
+  font-size:12.5px; color:var(--ink-3); }
+.foot p { max-width:none; }
+</style>
+
+<div class="wrap">
+  <div class="eyebrow">BioEmu membrane guidance · follow-up to the objective screen</div>
+  <h1>The frame fix worked. The guidance still failed.</h1>
+  <p class="lede">Replacing the searched membrane frame with one transferred from an
+  experimentally-oriented structure repaired every objective on paper — then the guidance re-run
+  destroyed 74–98% of structures anyway. This explains the gap.</p>
+
+  <div class="slab bad">
+    <p><strong>In short.</strong> Transferring the membrane frame from the OPM melittin structure
+    flipped all nine objectives to the correct sign on helicity and removed the stretch exploit.
+    Guiding with the two best of them nonetheless collapsed physical validity from 0.94 to
+    <strong>0.02</strong>. The screen validated the objectives on BioEmu's <em>finished</em>
+    structures, but guidance acts on noisy intermediates — and the failure that actually occurred
+    is one no objective can fix, because it comes from guiding positions while leaving the
+    rotational frames untouched.</p>
+  </div>
+
+  <h2>What the OPM reference actually is</h2>
+  <p>OPM (Orientations of Proteins in Membranes) takes a deposited structure and computes where it
+  sits in an implicit bilayer, then republishes the coordinates <strong>already rotated and
+  translated into that membrane frame</strong>. For <code>2mlt_opm.pdb</code> the file states its
+  geometry directly in the header:</p>
+  <div class="diagram"><pre style="margin:0;font-family:var(--f-mono);font-size:12px">REMARK      1/2 of bilayer thickness:   15.4</pre></div>
+  <p>and carries 277 <code>DUM</code> pseudo-atoms, all at <strong>z = +15.400</strong>, marking
+  the hydrocarbon boundary. The midplane is the z = 0 plane. Melittin's own Cα atoms span
+  z = 1.76 to 20.09 Å, so it lies across the interface at a 65° tilt — a peripheral peptide
+  resting on one leaflet, not a transmembrane one, which is why only a single boundary plane
+  is drawn.</p>
+
+  <h3>Is the membrane fixed?</h3>
+  <p>Fixed <em>relative to that one structure</em>. The OPM file's membrane is the z = 0 plane in
+  the OPM file's own coordinate system, and that is useless on its own, because BioEmu emits
+  structures in arbitrary poses — the model is SE(3)-equivariant, so a generated structure has no
+  canonical orientation to compare against.</p>
+  <p>So the membrane is <strong>transferred</strong>. Each generated structure is superimposed onto
+  the OPM reference by Kabsch, which says how that structure would have to be rotated to match the
+  reference's pose. We then carry the membrane plane <em>back</em> through that transformation and
+  express it in the generated structure's own coordinates, as a normal <strong>n</strong> and an
+  offset <strong>c</strong>, giving each residue a depth <code>z = n·x − c</code>. Mathematically
+  this is identical to moving the structure into the OPM frame, but it leaves the coordinates
+  untouched, which keeps the gradient clean. Verified exact: self-alignment returns n = (0, 0, 1)
+  and c = 0, and a randomly rotated copy reproduces every residue depth to 0.0000 Å.</p>
+
+  <h3>How that differs from searching</h3>
+  <div class="tscroll">
+  <table>
+    <thead><tr><th></th><th>Searched frame</th><th>OPM reference frame</th></tr></thead>
+    <tbody>
+      <tr><td>Where the membrane comes from</td>
+        <td>chosen to minimise the objective</td>
+        <td>transferred from an experimentally-anchored structure</td></tr>
+      <tr><td>Can the objective move it?</td>
+        <td><strong style="color:var(--crit)">Yes — this was the defect</strong></td>
+        <td><strong style="color:var(--good)">No</strong></td></tr>
+      <tr><td>Needs a reference?</td><td>no</td><td>yes, of the same peptide</td></tr>
+      <tr><td>Recovers the true normal?</td>
+        <td>66–83° off</td><td>exact, by construction</td></tr>
+    </tbody>
+  </table>
+  </div>
+  <p>The searched frame gave the objective an escape hatch: for any conformation, however bad, it
+  could find the membrane placement that scored best. "Improve the score" was therefore satisfiable
+  by moving the membrane instead of improving the structure. A transferred frame is determined by
+  shape-matching to the reference, which the objective has no influence over, so the only remaining
+  way to improve the score is to change the conformation. That is why every correlation flipped.</p>
+
+  <h2>The A/B, on 650 existing structures</h2>
+  <figure><svg viewBox="0 0 760 478" role="img" aria-label="Helicity correlation, before and after the frame fix" style="width:100%;height:auto">
+<text x="0" y="18" class="ct">Helicity correlation, before and after the frame fix</text>
+<text x="0" y="36" class="cs">Pearson r against DSSP helicity. Negative means the objective prefers folded helices, which is what melittin's membrane-bound state is.</text>
+<line x1="449.0" y1="42" x2="449.0" y2="452" class="axis"/>
+<text x="138" y="72" class="cl" text-anchor="end">Ez (Ca)</text>
+<rect x="449.0" y="54" width="196.0" height="12" rx="2" fill="#d03b3b" opacity="0.38"/>
+<text x="651.0" y="64" class="cv" text-anchor="start">+0.52</text>
+<rect x="239.2" y="69" width="209.8" height="12" rx="2" fill="#0ca30c" opacity="1.0"/>
+<text x="233.2" y="79" class="cv" text-anchor="end">-0.56</text>
+<text x="138" y="116" class="cl" text-anchor="end">Ez clamped</text>
+<rect x="449.0" y="98" width="24.3" height="12" rx="2" fill="#d03b3b" opacity="0.38"/>
+<text x="479.3" y="108" class="cv" text-anchor="start">+0.06</text>
+<rect x="214.5" y="113" width="234.5" height="12" rx="2" fill="#0ca30c" opacity="1.0"/>
+<text x="208.5" y="123" class="cv" text-anchor="end">-0.62</text>
+<text x="138" y="160" class="cl" text-anchor="end">Ez + anchor</text>
+<rect x="445.4" y="142" width="3.6" height="12" rx="2" fill="#0ca30c" opacity="0.38"/>
+<text x="439.4" y="152" class="cv" text-anchor="end">-0.01</text>
+<rect x="239.2" y="157" width="209.8" height="12" rx="2" fill="#0ca30c" opacity="1.0"/>
+<text x="233.2" y="167" class="cv" text-anchor="end">-0.56</text>
+<text x="138" y="204" class="cl" text-anchor="end">Depth contrast</text>
+<rect x="449.0" y="186" width="65.7" height="12" rx="2" fill="#d03b3b" opacity="0.38"/>
+<text x="520.7" y="196" class="cv" text-anchor="start">+0.17</text>
+<rect x="281.4" y="201" width="167.6" height="12" rx="2" fill="#0ca30c" opacity="1.0"/>
+<text x="275.4" y="211" class="cv" text-anchor="end">-0.45</text>
+<text x="138" y="248" class="cl" text-anchor="end">Saturating burial</text>
+<rect x="449.0" y="230" width="190.2" height="12" rx="2" fill="#d03b3b" opacity="0.38"/>
+<text x="645.3" y="240" class="cv" text-anchor="start">+0.51</text>
+<rect x="240.9" y="245" width="208.1" height="12" rx="2" fill="#0ca30c" opacity="1.0"/>
+<text x="234.9" y="255" class="cv" text-anchor="end">-0.55</text>
+<text x="138" y="292" class="cl" text-anchor="end">Hydrophobic moment</text>
+<rect x="290.9" y="274" width="158.1" height="12" rx="2" fill="#0ca30c" opacity="0.38"/>
+<text x="284.9" y="284" class="cv" text-anchor="end">-0.42</text>
+<rect x="290.9" y="289" width="158.1" height="12" rx="2" fill="#0ca30c" opacity="1.0"/>
+<text x="284.9" y="299" class="cv" text-anchor="end">-0.42</text>
+<text x="138" y="336" class="cl" text-anchor="end">Moment x normal</text>
+<rect x="290.9" y="318" width="158.1" height="12" rx="2" fill="#0ca30c" opacity="0.38"/>
+<text x="284.9" y="328" class="cv" text-anchor="end">-0.42</text>
+<rect x="195.0" y="333" width="254.0" height="12" rx="2" fill="#0ca30c" opacity="1.0"/>
+<text x="189.0" y="343" class="cv" text-anchor="end">-0.68</text>
+<text x="138" y="380" class="cl" text-anchor="end">Burial + 3x moment</text>
+<rect x="312.3" y="362" width="136.7" height="12" rx="2" fill="#0ca30c" opacity="0.38"/>
+<text x="306.3" y="372" class="cv" text-anchor="end">-0.36</text>
+<rect x="258.2" y="377" width="190.8" height="12" rx="2" fill="#0ca30c" opacity="1.0"/>
+<text x="252.2" y="387" class="cv" text-anchor="end">-0.51</text>
+<text x="138" y="424" class="cl" text-anchor="end">Burial + moment</text>
+<rect x="432.2" y="406" width="16.9" height="12" rx="2" fill="#0ca30c" opacity="0.38"/>
+<text x="426.2" y="416" class="cv" text-anchor="end">-0.04</text>
+<rect x="236.1" y="421" width="212.9" height="12" rx="2" fill="#0ca30c" opacity="1.0"/>
+<text x="230.1" y="431" class="cv" text-anchor="end">-0.57</text>
+<text x="150" y="468" class="cl">pale = searched frame · solid = OPM frame</text>
+</svg></figure>
+  <figure><svg viewBox="0 0 760 434" role="img" aria-label="Stretch margin, before and after the frame fix" style="width:100%;height:auto">
+<text x="0" y="18" class="ct">Stretch margin, before and after the frame fix</text>
+<text x="0" y="36" class="cs">Score change when the chain is pulled 3x along the membrane normal, in ensemble sigma. Positive means stretching makes the score worse, i.e. it cannot be used to cheat.</text>
+<line x1="595.6" y1="42" x2="595.6" y2="408" class="axis"/>
+<text x="138" y="72" class="cl" text-anchor="end">Ez (Ca)</text>
+<rect x="508.1" y="54" width="87.5" height="12" rx="2" fill="#d03b3b" opacity="0.38"/>
+<text x="502.1" y="64" class="cv" text-anchor="end">-1.98σ</text>
+<rect x="595.6" y="69" width="34.6" height="12" rx="2" fill="#0ca30c" opacity="1.0"/>
+<text x="636.2" y="79" class="cv" text-anchor="start">+0.78σ</text>
+<text x="138" y="116" class="cl" text-anchor="end">Ez clamped</text>
+<rect x="572.9" y="98" width="22.7" height="12" rx="2" fill="#d03b3b" opacity="0.38"/>
+<text x="566.9" y="108" class="cv" text-anchor="end">-0.51σ</text>
+<rect x="595.6" y="113" width="49.4" height="12" rx="2" fill="#0ca30c" opacity="1.0"/>
+<text x="651.0" y="123" class="cv" text-anchor="start">+1.12σ</text>
+<text x="138" y="160" class="cl" text-anchor="end">Ez + anchor</text>
+<rect x="524.7" y="142" width="70.9" height="12" rx="2" fill="#d03b3b" opacity="0.38"/>
+<text x="518.7" y="152" class="cv" text-anchor="end">-1.60σ</text>
+<rect x="595.6" y="157" width="34.6" height="12" rx="2" fill="#0ca30c" opacity="1.0"/>
+<text x="636.2" y="167" class="cv" text-anchor="start">+0.78σ</text>
+<text x="138" y="204" class="cl" text-anchor="end">Depth contrast</text>
+<rect x="195.0" y="186" width="400.6" height="12" rx="2" fill="#d03b3b" opacity="0.38"/>
+<text x="189.0" y="196" class="cv" text-anchor="end">-9.05σ</text>
+<rect x="595.6" y="201" width="20.6" height="12" rx="2" fill="#0ca30c" opacity="1.0"/>
+<text x="622.2" y="211" class="cv" text-anchor="start">+0.46σ</text>
+<text x="138" y="248" class="cl" text-anchor="end">Saturating burial</text>
+<rect x="544.1" y="230" width="51.5" height="12" rx="2" fill="#d03b3b" opacity="0.38"/>
+<text x="538.1" y="240" class="cv" text-anchor="end">-1.16σ</text>
+<rect x="595.6" y="245" width="20.6" height="12" rx="2" fill="#0ca30c" opacity="1.0"/>
+<text x="622.2" y="255" class="cv" text-anchor="start">+0.47σ</text>
+<text x="138" y="292" class="cl" text-anchor="end">Moment x normal</text>
+<rect x="595.6" y="274" width="10.5" height="12" rx="2" fill="#0ca30c" opacity="0.38"/>
+<text x="612.1" y="284" class="cv" text-anchor="start">+0.24σ</text>
+<rect x="591.1" y="289" width="4.5" height="12" rx="2" fill="#d03b3b" opacity="1.0"/>
+<text x="585.1" y="299" class="cv" text-anchor="end">-0.10σ</text>
+<text x="138" y="336" class="cl" text-anchor="end">Burial + 3x moment</text>
+<rect x="586.1" y="318" width="9.5" height="12" rx="2" fill="#d03b3b" opacity="0.38"/>
+<text x="580.1" y="328" class="cv" text-anchor="end">-0.21σ</text>
+<rect x="595.6" y="333" width="1.9" height="12" rx="2" fill="#0ca30c" opacity="1.0"/>
+<text x="603.5" y="343" class="cv" text-anchor="start">+0.04σ</text>
+<text x="138" y="380" class="cl" text-anchor="end">Burial + moment</text>
+<rect x="557.7" y="362" width="37.9" height="12" rx="2" fill="#d03b3b" opacity="0.38"/>
+<text x="551.7" y="372" class="cv" text-anchor="end">-0.86σ</text>
+<rect x="595.6" y="377" width="14.3" height="12" rx="2" fill="#0ca30c" opacity="1.0"/>
+<text x="615.9" y="387" class="cv" text-anchor="start">+0.32σ</text>
+<text x="150" y="424" class="cl">pale = searched frame · solid = OPM frame</text>
+</svg></figure>
+  <p>Every objective improves. Helicity correlations go negative across the board — including
+  <code>ez_ca</code>, the unmodified Ez potential we started with, at −0.559. The worst stretch
+  exploit, <code>depth_contrast</code> at −9.05σ, becomes +0.46σ. <code>ez_clamped</code> also
+  recovers its dynamic range (0.020 → 0.562): under the searched frame it could always find a
+  placement that saturated its clamps.</p>
+
+  <h3>Two bugs this exposed</h3>
+  <ol>
+    <li><strong><code>ez_ca</code> silently ignored externally supplied frames.</strong> It
+    delegated to <code>EzMembranePotential.evaluate()</code>, which always solves its own. Its
+    first "OPM frame" result came back byte-identical to the searched one, which is what gave it
+    away.</li>
+    <li><strong><code>moment_alignment</code> had its sign inverted.</strong> With the OPM normal
+    pointing away from the bilayer core, a hydrophobic face turned <em>toward</em> the core must
+    give μ·n &lt; 0. It had been rewarding the face pointing at solvent.</li>
+  </ol>
+
+  <h2>The guidance re-run</h2>
+  <p>Seven runs, 50 structures each: baseline, plus <code>combined</code> and
+  <code>moment_alignment</code> at λ ∈ {20, 100, 500}, all under the OPM frame. The physicality
+  potentials were deliberately left off — the screen predicted both objectives resist stretching,
+  and adding chain restraints would have masked whether that prediction held.</p>
+
+  <div class="tscroll">
+  <table>
+    <thead><tr><th>Run</th><th>Physical</th><th>CN break</th><th>Clash</th><th>Ez</th><th>Helicity</th></tr></thead>
+    <tbody><tr><td>baseline</td><td class='num' style='color:#0ca30c'>0.94</td><td class='num'>0.04</td><td class='num'>0.02</td><td class='num'>-2.68</td><td class='num'>0.59</td></tr><tr><td>combined  λ=100</td><td class='num' style='color:#d03b3b'>0.02</td><td class='num'>0.98</td><td class='num'>0.08</td><td class='num'>-2.69</td><td class='num'>0.35</td></tr><tr><td>combined  λ=20</td><td class='num' style='color:#d03b3b'>0.24</td><td class='num'>0.76</td><td class='num'>0.04</td><td class='num'>-2.69</td><td class='num'>0.56</td></tr><tr><td>combined  λ=500</td><td class='num' style='color:#d03b3b'>0.02</td><td class='num'>0.98</td><td class='num'>0.08</td><td class='num'>-2.69</td><td class='num'>0.35</td></tr><tr><td>moment_alignment  λ=100</td><td class='num' style='color:#d03b3b'>0.02</td><td class='num'>0.98</td><td class='num'>0.10</td><td class='num'>-3.26</td><td class='num'>0.00</td></tr><tr><td>moment_alignment  λ=20</td><td class='num' style='color:#d03b3b'>0.26</td><td class='num'>0.74</td><td class='num'>0.04</td><td class='num'>-2.61</td><td class='num'>0.67</td></tr><tr><td>moment_alignment  λ=500</td><td class='num' style='color:#d03b3b'>0.02</td><td class='num'>0.98</td><td class='num'>0.08</td><td class='num'>-3.26</td><td class='num'>0.00</td></tr></tbody>
+  </table>
+  </div>
+  <p class="sub">At λ ≥ 100 only one structure of fifty survives the physicality filter.</p>
+
+  <div class="slab bad">
+    <p><strong>It failed at every λ.</strong> Physical validity falls from 0.94 to 0.24–0.26 at
+    λ = 20 and to 0.02 at λ = 100 and above. <code>combined</code> did not improve its energy at
+    all (−2.69 against the baseline's −2.68). <code>moment_alignment</code> reached −3.26, but with
+    helicity <strong>0.00</strong> and one surviving structure — the original pathology exactly:
+    energy down, molecule destroyed.</p>
+    <p>λ = 100 and λ = 500 differ by 0.001 nm in final coordinates, so the guidance clip saturates:
+    above roughly λ = 100 the strength knob does nothing and only the direction matters.</p>
+  </div>
+
+  <h2>Why the screen did not predict this</h2>
+  <p>The screen asked whether stretching a <em>realistic, finished</em> BioEmu structure improves
+  the score. It does not — that result stands. But guidance never touches finished structures. It
+  acts on the Tweedie estimate x̂₀ at intermediate noise levels, where x̂₀ is not a realistic
+  peptide at all. An objective's behaviour on the final distribution says nothing about its
+  behaviour on noisy intermediates. The screen tested the wrong distribution.</p>
+
+  <h2>What the failure signature says</h2>
+  <p>Look at which test fails: <strong>CN breaks at 0.74–0.98, clashes only 0.04–0.10.</strong>
+  Peptide bonds, not steric overlap. That points somewhere specific.</p>
+  <p>BioEmu stores each residue as a rigid body — a Cα position plus a rotation matrix — and
+  reconstructs N, C, O and Cβ from that pair. Nothing enforces that C(i) and N(i+1) land 1.33 Å
+  apart; the network has merely <em>learned</em> to emit consecutive frames whose reconstructed
+  atoms form proper bonds. All of our guidance pushes <code>pos</code> and never touches
+  <code>node_orientations</code>, so the two channels drift out of agreement, and the reconstructed
+  peptide bond is exactly where that disagreement becomes visible. No choice of objective repairs
+  this, because it is not about the objective. It is about which channel is being guided.</p>
+
+  <h2>What follows</h2>
+  <ol>
+    <li><strong>Guide the rotational channel.</strong> Rotating a residue's frame moves Cβ without
+    moving any Cα, so it <em>structurally cannot</em> stretch a bond. This is the one approach
+    immune to the failure that has now killed every run.
+    <code>rot_guidance_unverified.py</code> is the starting point, and
+    <code>moment_alignment</code> is already orientation-dependent, which such guidance requires.</li>
+    <li><strong>Re-validate on noised intermediates.</strong> The screen is salvageable: add x̂₀
+    estimates at several noise levels to its test set. That is a cheap repair to a methodology
+    error, and it would have predicted this failure.</li>
+    <li><strong>Put the physicality terms back on.</strong> They measurably helped before (maximum
+    stretch 16.3 Å → 6.4 Å), and there is no longer any reason to run without them.</li>
+  </ol>
+
+  <div class="foot">
+    <p><strong>Data.</strong> A/B on 650 pooled structures from the earlier sweeps.
+    Guidance re-run: 7 × 50 structures, melittin, BioEmu v1.1, RTX 4090, shared seed.
+    Frame reference <code>2mlt_opm.pdb</code> (OPM entry 149, half-thickness 15.4 Å,
+    peripheral, 65° tilt). Raw data in <code>results_opm/</code>.</p>
+    <p><strong>Caveat on tilt.</strong> Under the OPM frame the ensemble sits at 65 ± 9°, matching
+    OPM's experimental 65°. That agreement is largely by construction — Kabsch-aligning to a
+    65°-tilt reference places helical structures at about that tilt. It confirms the transfer
+    works; it is not independent evidence that generated structures are correctly oriented.</p>
+    <p>Generated by <code>compare_frames.py</code>, <code>run.py</code>, <code>analyze.py</code>
+    and <code>make_sweep_report.py</code>.</p>
+  </div>
+</div>
