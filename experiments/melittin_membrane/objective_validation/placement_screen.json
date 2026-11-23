@@ -1,0 +1,108 @@
+{
+  "structure": "2mlt_opm.pdb",
+  "n_random": 4000,
+  "true_placement": {
+    "normal": [
+      0,
+      0,
+      1
+    ],
+    "center_A": 0.0,
+    "tilt_deg": 64.05442810058594
+  },
+  "opm_experimental_tilt_deg": 65.0,
+  "objectives": [
+    {
+      "key": "ez_ca",
+      "name": "Ez depth potential (Ca)",
+      "true_score": -2.085118293762207,
+      "true_percentile": 96.85000000000001,
+      "gap_sd": 0.26029089093208313,
+      "best_tilt_deg": 9.912881851196289,
+      "random_mean": 1.1825528144836426,
+      "random_best": -2.648249626159668,
+      "pass": true
+    },
+    {
+      "key": "ez_clamped",
+      "name": "Ez, per-residue reward clamped",
+      "true_score": -4.881917476654053,
+      "true_percentile": 72.5,
+      "gap_sd": 0.6964340806007385,
+      "best_tilt_deg": 60.869476318359375,
+      "random_mean": -2.643263101577759,
+      "random_best": -6.590058326721191,
+      "pass": false
+    },
+    {
+      "key": "ez_anchored",
+      "name": "Ez + centroid anchor",
+      "true_score": 1.5396180152893066,
+      "true_percentile": 86.9,
+      "gap_sd": 0.32605576515197754,
+      "best_tilt_deg": 20.73830795288086,
+      "random_mean": 12.919011116027832,
+      "random_best": -2.3338284492492676,
+      "pass": false
+    },
+    {
+      "key": "depth_contrast",
+      "name": "Amphipathic depth contrast",
+      "true_score": -6.603048324584961,
+      "true_percentile": 71.39999999999999,
+      "gap_sd": 1.1257799863815308,
+      "best_tilt_deg": 2.963127851486206,
+      "random_mean": -0.9934766888618469,
+      "random_best": -15.893900871276855,
+      "pass": false
+    },
+    {
+      "key": "burial_saturating",
+      "name": "Saturating hydrophobic burial",
+      "true_score": -5.960129261016846,
+      "true_percentile": 90.525,
+      "gap_sd": 0.9422693252563477,
+      "best_tilt_deg": 6.555443286895752,
+      "random_mean": -1.0585873126983643,
+      "random_best": -9.012496948242188,
+      "pass": false
+    },
+    {
+      "key": "hydrophobic_moment",
+      "frame_free": true
+    },
+    {
+      "key": "moment_alignment",
+      "name": "Moment aligned to membrane normal",
+      "true_score": -4.624167442321777,
+      "true_percentile": 88.425,
+      "gap_sd": 0.3823998272418976,
+      "best_tilt_deg": 79.82720184326172,
+      "random_mean": -0.04872170835733414,
+      "random_best": -5.934332847595215,
+      "pass": false
+    },
+    {
+      "key": "combined_moment_heavy",
+      "name": "Burial + moment (moment-weighted 3x)",
+      "true_score": -23.770538330078125,
+      "true_percentile": 90.525,
+      "gap_sd": 0.942269504070282,
+      "best_tilt_deg": 6.555443286895752,
+      "random_mean": -18.868995666503906,
+      "random_best": -26.822906494140625,
+      "pass": false
+    },
+    {
+      "key": "combined",
+      "name": "Saturating burial + moment",
+      "true_score": -8.9285306930542,
+      "true_percentile": 90.525,
+      "gap_sd": 0.9422692060470581,
+      "best_tilt_deg": 6.555443286895752,
+      "random_mean": -4.026988983154297,
+      "random_best": -11.980897903442383,
+      "pass": false
+    }
+  ]
+}
