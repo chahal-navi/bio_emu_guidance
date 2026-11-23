@@ -1,0 +1,25 @@
+# The configuration that wins all three objective screens but has never been guided with:
+# the unmodified Senes Ez potential on Ca, with the membrane frame transferred from the
+# OPM-oriented melittin structure rather than searched for.
+#
+# Designed as a controlled A/B against results_lam (Ez + SEARCHED frame, same lambdas,
+# same seed): only the frame differs, which isolates whether the Kabsch frame helps or
+# hurts during guidance. It is demonstrably right for SCORING (ranks the true membrane
+# placement at the 96.9th percentile) and untested for GUIDING.
+_target_: bioemu.denoiser.membrane_guided_dpm_solver
+_partial_: true
+eps_t: 0.001
+max_t: 0.99
+N: 100
+noise: 0.0
+guidance_scale: 20.0
+guidance_t_max: 0.8
+guidance_t_min: 0.0
+guide_midpoint: true
+backprop_through_model: true
+max_guidance_ratio: 0.5
+potential:
+  _target_: bioemu.steering.membrane_objectives.ReferenceFramePotential
+  objective: ez_ca
+  reference_pdb: ${oc.env:BIOEMU_OPM_REF}
+  sequence: GIGAVLKVLTTGLPALISWIKRKRQQ
