@@ -423,14 +423,49 @@ code { font-family:var(--f-mono); font-size:0.9em; background:var(--core); paddi
   roughly that tilt. It confirms the transfer works; it is not independent evidence that the
   generated structures are correctly oriented.</p>
 
+
+  <h2>Part three — a better screen: does it recognise the true membrane?</h2>
+  <p>The helicity test above uses a proxy, measured on generated structures. A sharper question
+  uses experimental ground truth and removes the search algorithm from the picture entirely: hold
+  the OPM-oriented melittin <em>fixed</em> and sweep the <strong>membrane</strong> instead — 4000
+  random normals and offsets — then check where the objective ranks the one true placement
+  (normal = +z, midplane 0, 64° tilt).</p>
+
+  <div class="tscroll">
+  <table>
+    <thead><tr><th>Objective</th><th>True placement rank</th><th>Gap to best</th>
+      <th>Preferred tilt</th><th></th></tr></thead>
+    <tbody><tr><td><div class='oname'>Ez (Ca)</div><div class='okey'>ez_ca</div></td><td class='num' style='color:var(--good)'>96.9%</td><td class='num'>0.26&#963;</td><td class='num' style='color:var(--crit)'>10&#176;</td><td><span class="badge pass">PASS</span></td></tr><tr><td><div class='oname'>Saturating burial</div><div class='okey'>burial_saturating</div></td><td class='num' style='color:var(--warn)'>90.5%</td><td class='num'>0.94&#963;</td><td class='num' style='color:var(--crit)'>7&#176;</td><td></td></tr><tr><td><div class='oname'>Burial + 3x moment</div><div class='okey'>combined_moment_heavy</div></td><td class='num' style='color:var(--warn)'>90.5%</td><td class='num'>0.94&#963;</td><td class='num' style='color:var(--crit)'>7&#176;</td><td></td></tr><tr><td><div class='oname'>Burial + moment</div><div class='okey'>combined</div></td><td class='num' style='color:var(--warn)'>90.5%</td><td class='num'>0.94&#963;</td><td class='num' style='color:var(--crit)'>7&#176;</td><td></td></tr><tr><td><div class='oname'>Moment x normal</div><div class='okey'>moment_alignment</div></td><td class='num' style='color:var(--warn)'>88.4%</td><td class='num'>0.38&#963;</td><td class='num' style='color:var(--good)'>80&#176;</td><td></td></tr><tr><td><div class='oname'>Ez + anchor</div><div class='okey'>ez_anchored</div></td><td class='num' style='color:var(--crit)'>86.9%</td><td class='num'>0.33&#963;</td><td class='num' style='color:var(--crit)'>21&#176;</td><td></td></tr><tr><td><div class='oname'>Ez clamped</div><div class='okey'>ez_clamped</div></td><td class='num' style='color:var(--crit)'>72.5%</td><td class='num'>0.70&#963;</td><td class='num' style='color:var(--good)'>61&#176;</td><td></td></tr><tr><td><div class='oname'>Depth contrast</div><div class='okey'>depth_contrast</div></td><td class='num' style='color:var(--crit)'>71.4%</td><td class='num'>1.13&#963;</td><td class='num' style='color:var(--crit)'>3&#176;</td><td></td></tr></tbody>
+  </table>
+  </div>
+  <p class="sub">Rank = percent of random placements scoring worse than the truth. Gap = how far
+  the best random placement beats the truth, in standard deviations. True tilt is 64°.</p>
+
+  <div class="slab">
+    <p><strong>The unmodified Ez potential wins.</strong> <code>ez_ca</code> is the only objective
+    that ranks the true placement in the top 5% (96.9%, gap 0.26σ). Its poor showing on the
+    helicity screen was a frame artefact: under the OPM frame it scores −0.559 on helicity,
+    +0.78σ on stretch and 96.9% here, making it the best objective on all three tests. The Senes
+    potential was sound throughout; everything that looked wrong with it traced back to the
+    frame.</p>
+    <p><strong>Most objectives want melittin to be transmembrane.</strong> Read the preferred-tilt
+    column: <code>burial_saturating</code>, <code>combined</code> and <code>depth_contrast</code>
+    all favour 3–10°, meaning the helix threaded <em>through</em> the bilayer. Burial is indeed
+    maximised that way — but melittin is a peripheral peptide, which is why OPM draws a single
+    boundary plane at z = +15.4 rather than two. Those objectives are optimising the wrong binding
+    mode. <code>moment_alignment</code> errs the other way at 80°, and <code>ez_clamped</code> has
+    the most accurate preferred tilt (61°) but the weakest discrimination.</p>
+  </div>
+
   <h2>What to do next</h2>
   <ol>
     <li><strong>Use the OPM reference frame for all future guidance.</strong> This is done and
     verified. It is the single change that matters most, and it helps every objective equally.</li>
-    <li><strong>Guide with <code>moment_alignment</code> or <code>combined</code>.</strong>
-    Under the OPM frame <code>moment_alignment</code> has the strongest helicity correlation
-    (−0.677) and a wide spread (3.43), though its stretch margin is thin (−0.10σ, near noise).
-    <code>combined</code> is the balanced choice: −0.567 with a clear +0.32σ stretch margin.</li>
+    <li><strong>Guide with <code>ez_ca</code>.</strong> It is the only objective to pass all
+    three screens, and the only one that recognises the true membrane placement. Note that it has
+    never actually been run in this configuration: every Ez guidance sweep so far used the
+    searched frame, and the one run under the OPM frame used <code>combined</code> and
+    <code>moment_alignment</code> instead.</li>
     <li><strong>Re-run the λ sweep with the fixed frame.</strong> Every guidance result so far used
     the broken frame, so the entire sweep needs repeating before any of it means anything. That is
     roughly 30 minutes of GPU time.</li>
