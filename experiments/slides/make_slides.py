@@ -12,7 +12,11 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 OUT = HERE / "phase1_slides.html"
 
-BLUE, ORANGE, AQUA, YELLOW, GREEN, RED = "#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#0ca30c", "#d03b3b"
+# Deliberately two hues only: one blue for everything normal, one red for failure.
+ACCENT, BAD, MID = "#2f6690", "#b03a2e", "#8a908b"
+BLUE = AQUA = GREEN = ACCENT
+ORANGE = RED = BAD
+YELLOW = MID
 
 # --- Ez parameters (Senes et al. 2007, Table 1) ------------------------------------
 EZ = {"LEU": (-0.64, 17.34, 8.61), "LYS": (1.66, 11.11, 2.09)}
@@ -81,8 +85,8 @@ def chart_ez():
          f'<text x="{X(15.4)+8:.0f}" y="{t+16}" class="cap" style="fill:var(--accent)">membrane edge</text>',
          f'<text x="{X(5):.0f}" y="{t+ph-8}" class="cap" style="fill:var(--accent)">inside the membrane</text>',
          f'<line x1="{l}" y1="{Y(0):.1f}" x2="{l+pw}" y2="{Y(0):.1f}" stroke="var(--line)" stroke-width="1.5"/>']
-    for name, (dE0, zmid, n), col, lab in [("LEU", EZ["LEU"], AQUA, "Leucine — oily"),
-                                           ("LYS", EZ["LYS"], ORANGE, "Lysine — charged")]:
+    for name, (dE0, zmid, n), col, lab in [("LEU", EZ["LEU"], AQUA, "Leucine, oily"),
+                                           ("LYS", EZ["LYS"], ORANGE, "Lysine, charged")]:
         pts = [f"{X(z):.1f},{Y(dE0 / (1 + (max(z,0.01)/zmid)**n)):.1f}" for z in [i*0.4 for i in range(86)]]
         p.append(f'<polyline points="{" ".join(pts)}" fill="none" stroke="{col}" stroke-width="3"/>')
         ey = dE0 / (1 + (0.4/zmid)**n)
@@ -120,8 +124,8 @@ def chart_lambda():
         col = GREEN if pairs >= 44 else (YELLOW if pairs >= 32 else RED)
         p.append(f'<circle cx="{cx:.0f}" cy="{cy:.0f}" r="8" fill="{col}" stroke="var(--bg)" stroke-width="2.5"/>')
         p.append(f'<text x="{cx+14:.0f}" y="{cy+5:.0f}" class="cap">λ={lam}</text>')
-    p.append(f'<text x="{l+pw/2:.0f}" y="{h-8}" class="cap" text-anchor="middle">structures that survive intact →</text>')
-    p.append(f'<text x="18" y="{t+ph/2:.0f}" class="cap" text-anchor="middle" transform="rotate(-90 18 {t+ph/2:.0f})">↑ effect per structure</text>')
+    p.append(f'<text x="{l+pw/2:.0f}" y="{h-8}" class="cap" text-anchor="middle">structures that survive intact</text>')
+    p.append(f'<text x="18" y="{t+ph/2:.0f}" class="cap" text-anchor="middle" transform="rotate(-90 18 {t+ph/2:.0f})">effect per structure</text>')
     return svg(w, h, "".join(p), "effect against yield")
 
 
@@ -150,7 +154,7 @@ def chart_frames():
     """Searched frame finds the wrong membrane; reference frame transfers the right one."""
     p = []
     for k, (title, ang, col, note) in enumerate([
-            ("we let the maths pick", -62, RED, "66–83° wrong"),
+            ("we let the maths pick", -62, RED, "66 to 83° wrong"),
             ("we copy it from an experiment", 0, GREEN, "correct")]):
         ox = 40 + k * 420
         p.append(f'<text x="{ox+170}" y="22" class="cap" text-anchor="middle" style="font-weight:600">{title}</text>')
@@ -186,7 +190,7 @@ slide("title", "Steering a learned sampler toward a membrane",
 
 slide("", "The physical system",
       """<p class="big">A protein is a heteropolymer: ~20 monomer types, one linear chain.</p>
-      <ul><li>Backbone bond lengths and angles are <strong>stiff</strong> — effectively holonomic
+      <ul><li>Backbone bond lengths and angles are <strong>stiff</strong>, effectively holonomic
       constraints. The soft degrees of freedom are torsions.</li>
       <li>So the configuration space is a constrained manifold, not R<sup>3n</sup>.</li>
       <li>Each monomer carries a side group: some nonpolar, some charged.</li></ul>
@@ -205,7 +209,7 @@ slide("math", "What we actually want",
       <div class="eq">x ~ p(x) &nbsp;∝&nbsp; exp( −U(x) / k<sub>B</sub>T )</div>
       <p class="eqcap">samples from the equilibrium ensemble over conformations x</p>
       </div>
-      <ul><li>Not one minimum — the <strong>distribution</strong>. Function often lives in the tail.</li>
+      <ul><li>Not one minimum, the <strong>distribution</strong>. Function often lives in the tail.</li>
       <li>Molecular dynamics integrates the Langevin equation honestly, but barrier crossings are
       rare events: µs of simulation for ms of physics.</li></ul>
       <p class="note">So: can a generative model act as a sampler for p(x), trained once,
@@ -217,7 +221,7 @@ slide("chart", "Diffusion models as learned samplers",
       pass is an SDE integrated in 100 steps. BioEmu is this, trained on ~200 ms of aggregate MD
       plus experimental folding free energies.</p>""")
 
-slide("math", "Forward: Ornstein–Uhlenbeck to a Gaussian prior",
+slide("math", "Forward: Ornstein-Uhlenbeck to a Gaussian prior",
       """<div class="eqbox">
       <div class="eq">dx &nbsp;=&nbsp; −½ β(t) x &nbsp;dt&nbsp; + &nbsp;√β(t) &nbsp;dW</div>
       <p class="eqcap">variance-preserving; p<sub>T</sub>(x) → N(0, I)</p>
@@ -226,7 +230,7 @@ slide("math", "Forward: Ornstein–Uhlenbeck to a Gaussian prior",
       <div class="eq">x<sub>t</sub> &nbsp;=&nbsp; α<sub>t</sub> x<sub>0</sub> &nbsp;+&nbsp;
       σ<sub>t</sub> ε , &nbsp;&nbsp; ε ~ N(0, I) , &nbsp;&nbsp; α<sub>t</sub><sup>2</sup> +
       σ<sub>t</sub><sup>2</sup> = 1</div>
-      <p class="eqcap">the transition kernel is Gaussian in closed form — this is what makes
+      <p class="eqcap">the transition kernel is Gaussian in closed form, this is what makes
       training cheap</p>
       </div>""")
 
@@ -234,7 +238,7 @@ slide("math", "Reverse: Anderson's time-reversed SDE",
       """<div class="eqbox">
       <div class="eq">dx &nbsp;=&nbsp; [ −½β(t) x &nbsp;−&nbsp; β(t) <span class="hl">∇<sub>x</sub>
       log p<sub>t</sub>(x)</span> ] dt &nbsp;+&nbsp; √β(t) &nbsp;dW̄</div>
-      <p class="eqcap">Anderson 1982 — exact, given the score of every marginal</p>
+      <p class="eqcap">Anderson 1982, exact, given the score of every marginal</p>
       </div>
       <p class="big">The <span class="hl">score</span> is the only unknown.</p>
       <div class="eqbox">
@@ -257,8 +261,8 @@ slide("math", "The state space is not R<sup>3n</sup>",
       """<p class="big">BioEmu puts a rigid frame on every monomer.</p>
       <div class="codebox">positions&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;x ∈ R<sup>n×3</sup>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;one point per monomer
 orientations&nbsp;&nbsp;R ∈ SO(3)<sup>n</sup>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;how each frame is rotated</div>
-      <ul><li>Two coupled diffusions: Gaussian on R<sup>3</sup>, <strong>IGSO(3)</strong> — the heat
-      kernel on the group — on the rotations.</li>
+      <ul><li>Two coupled diffusions: Gaussian on R<sup>3</sup>, <strong>IGSO(3)</strong>, the heat
+      kernel on the group, on the rotations.</li>
       <li>The SO(3) score lives in the Lie algebra so(3) ≅ R<sup>3</sup>.</li>
       <li>All other atoms are <strong>reconstructed</strong> from (x, R) assuming ideal local geometry.</li></ul>
       <p class="note">Nothing in the model <em>enforces</em> that neighbouring frames join up. It has
@@ -271,7 +275,7 @@ slide("", "Conditioning versus guidance",
       <li><strong>Guidance</strong> is applied at inference. It modifies the sampled distribution
       using an external function, with the weights frozen.</li></ul>
       <p class="note">We have no membrane training data and no budget to retrain. Guidance is the
-      only lever — and because the score is a gradient, it is a clean one.</p>""")
+      only lever, and because the score is a gradient, it is a clean one.</p>""")
 
 slide("math", "Guidance = tilting the target",
       """<div class="eqbox">
@@ -291,7 +295,7 @@ slide("math", "The obstruction: E needs a clean configuration",
       <div class="eqbox">
       <div class="eq">x̂<sub>0</sub> &nbsp;=&nbsp; E[ x<sub>0</sub> | x<sub>t</sub> ] &nbsp;=&nbsp;
       <span class="frac"><span>x<sub>t</sub> + σ<sub>t</sub><sup>2</sup> s<sub>θ</sub>(x<sub>t</sub>, t)</span><span>α<sub>t</sub></span></span></div>
-      <p class="eqcap">Tweedie's formula — the posterior mean, free from the score we already have</p>
+      <p class="eqcap">Tweedie's formula, the posterior mean, free from the score we already have</p>
       </div>
       <p class="note">We score x̂<sub>0</sub> and backpropagate through it. Exact as a posterior
       mean; a poor proxy for a <em>sample</em> when σ<sub>t</sub> is large. This approximation
@@ -305,7 +309,7 @@ slide("chart", "The potential: depth-dependent transfer free energy",
 
 slide("", "A gauge problem",
       """<p class="big">p(x) is SE(3)-invariant. E(x) is not.</p>
-      <ul><li>The generator has no preferred frame — rotate a sample and it is equally valid.</li>
+      <ul><li>The generator has no preferred frame, rotate a sample and it is equally valid.</li>
       <li>But "depth" is defined against an <strong>external</strong> slab, with a normal
       <strong>n</strong> and an offset c.</li>
       <li>So guidance requires <em>fixing the gauge</em>, and how we fix it is a modelling choice,
@@ -317,9 +321,9 @@ slide("chart", "Why the variational gauge fails",
       f"""<div class="fig">{chart_frames()}</div>
       <p class="note">Minimising E over (n, c) as well as x lets the objective relocate the slab
       instead of improving the configuration. Benchmarked against an experimentally determined
-      placement, the recovered normal was <strong>66–83° off</strong>.</p>""")
+      placement, the recovered normal was <strong>66 to 83° off</strong>.</p>""")
 
-slide("bad", "Attempt 1 — the ensemble collapsed",
+slide("bad", "Attempt 1: the ensemble collapsed",
       """<table class="t"><tr><th>λ</th><th>valid configurations</th><th>⟨E⟩</th></tr>
       <tr><td>0</td><td class="ok">94%</td><td>−2.68</td></tr>
       <tr><td>100</td><td class="warn">72%</td><td>−2.84</td></tr>
@@ -334,7 +338,7 @@ slide("math", "Why it was exploitable",
       <p class="eqcap">separable: no two-body term, no chain connectivity</p>
       </div>
       <ul><li>Its infimum puts nonpolar monomers at the midplane and charged ones at infinity
-      <strong>simultaneously</strong> — while bonded 3.8 Å apart.</li>
+      <strong>simultaneously</strong>, while bonded 3.8 Å apart.</li>
       <li>Unreachable for a connected chain, so the gradient points permanently at a configuration
       that does not exist.</li></ul>
       <p class="note">For melittin: infimum −6.64 kcal/mol; best an ideal helix reaches −2.66;
@@ -342,28 +346,28 @@ slide("math", "Why it was exploitable",
 
 slide("", "So we built a screen for the objective",
       """<p class="big">Validate the potential before coupling it to the sampler.</p>
-      <ul><li><strong>Order check</strong> — does E correlate negatively with helicity? It must.</li>
-      <li><strong>Adversarial check</strong> — apply a transform known to be invalid (dilate the
+      <ul><li><strong>Order check</strong>, does E correlate negatively with helicity? It must.</li>
+      <li><strong>Adversarial check</strong>, apply a transform known to be invalid (dilate the
       chain along <strong>n</strong>). E must increase.</li>
-      <li><strong>Gauge check</strong> — hold a known structure fixed, sample 4,000 random (n, c).
+      <li><strong>Gauge check</strong>, hold a known structure fixed, sample 4,000 random (n, c).
       The experimental placement must rank at the top.</li></ul>
       <p class="note">Nine candidate potentials. Seven were exploitable under a variational gauge.</p>""")
 
-slide("good", "Attempt 2 — transport the gauge instead",
+slide("good", "Attempt 2: transport the gauge instead",
       """<p class="big">Take (n, c) from an experimentally placed structure by Kabsch superposition.</p>
       <table class="t"><tr><th>potential</th><th>corr. with order</th><th>exploitable</th></tr>
       <tr><td>Ez, variational gauge</td><td class="bad">+0.52</td><td class="bad">yes, −1.98σ</td></tr>
       <tr><td>Ez, transported gauge</td><td class="ok">−0.56</td><td class="ok">no, +0.78σ</td></tr></table>
       <p class="note">All nine potentials flipped to the correct sign. The potential was never the
-      main defect — <strong>the gauge was</strong>. The unmodified Ez turned out to be the best of
+      main defect: <strong>the gauge was</strong>. The unmodified Ez turned out to be the best of
       the nine.</p>""")
 
 slide("bad", "Attempt 2 still broke the chain",
       """<p class="big">Correct potential, correct gauge, 98% invalid.</p>
-      <ul><li>Failures were <strong>always</strong> in the inter-monomer bond (0.74–0.98), never
-      steric overlap (0.04–0.10).</li>
+      <ul><li>Failures were <strong>always</strong> in the inter-monomer bond (0.74 to 0.98), never
+      steric overlap (0.04 to 0.10).</li>
       <li>We apply ∇E to <strong>x</strong> and never to <strong>R</strong>.</li>
-      <li>The two channels decohere, and the reconstructed bond — which depends on both — snaps.</li></ul>
+      <li>The two channels decohere, and the reconstructed bond, which depends on both, snaps.</li></ul>
       <p class="note">Back to the state-space slide: nothing enforces frame consistency. We were
       destroying the one property the model held only statistically.</p>""")
 
@@ -374,7 +378,7 @@ slide("math", "And an error of our own",
       <div class="eqbox">
       <div class="eq">Var(g − b) = Var(g) + Var(b) − 2ρ√(Var g · Var b)
       &nbsp;=&nbsp; 2.16 &nbsp;−&nbsp; 2.13 &nbsp;=&nbsp; 0.03</div>
-      <p class="eqcap">pairing cancels 99% of the variance — a control variate, effectively</p>
+      <p class="eqcap">pairing cancels 99% of the variance, a control variate, effectively</p>
       </div>
       <table class="t"><tr><th>same data, estimator</th><th>p</th></tr>
       <tr><td>unpaired</td><td class="bad">0.43</td></tr>
@@ -383,7 +387,7 @@ slide("math", "And an error of our own",
 slide("good", "The effect is real",
       """<p class="hero">44 / 44</p>
       <p class="big">Every configuration improved, at zero cost to validity.</p>
-      <ul><li>94% valid — identical to the unguided ensemble.</li>
+      <ul><li>94% valid, identical to the unguided ensemble.</li>
       <li>Reproduced on three further peptides, all significant.</li></ul>""")
 
 slide("chart", "A fixed exchange rate",
@@ -397,18 +401,18 @@ slide("", "A controlled comparison",
       <ul><li><strong>Pardaxin</strong> is solved both surface-adsorbed and inserted.</li>
       <li>Same sequence ⇒ same conditioning ⇒ same prior ensemble. Only the target gauge differs.</li>
       <li>Surface target: ⟨ΔE⟩ = −0.266, 48/50 retained. Inserted target: −0.173, 40/50.</li></ul>
-      <p class="note">Adsorption is an easier tilt than insertion — consistent with the ceiling,
+      <p class="note">Adsorption is an easier tilt than insertion, consistent with the ceiling,
       since insertion demands the larger displacement of the chain.</p>""")
 
 slide("chart", "Leakage, and the honest effect size",
       f"""<div class="fig">{chart_peptides()}</div>
       <p class="note">Pale = evaluated in the <em>same</em> transported gauge the guidance used.
-      Solid = evaluated with an independently determined gauge. The effect is <strong>3–8×
+      Solid = evaluated with an independently determined gauge. The effect is <strong>3 to 8×
       smaller</strong> when the estimator does not share information with the objective. Still
-      significant (p = 0.003–0.03); magnitude ≈ 0.3 k<sub>B</sub>T.</p>""")
+      significant (p = 0.003 to 0.03); magnitude ≈ 0.3 k<sub>B</sub>T.</p>""")
 
 slide("", "What Phase 1 established",
-      """<ul><li><strong>Inference-time guidance of a frozen sampler works</strong> — monotone in λ,
+      """<ul><li><strong>Inference-time guidance of a frozen sampler works</strong>, monotone in λ,
       100% of configurations, four peptides.</li>
       <li><strong>Gauge fixing dominates potential design.</strong> The opposite of our prior.</li>
       <li><strong>Separable potentials are exploitable</strong> by construction, and must be screened
@@ -420,7 +424,7 @@ slide("", "Phase 2",
       """<ul><li><strong>Guide the SO(3) channel.</strong> Rotating a frame moves side groups without
       displacing any backbone point, so it cannot violate the bond constraint. If the trade-off
       slope differs, the position channel was the binding one.</li>
-      <li><strong>Screen on noised intermediates</strong>, not just x<sub>0</sub> — the gap that let
+      <li><strong>Screen on noised intermediates</strong>, not just x<sub>0</sub>, the gap that let
       two failures through.</li>
       <li><strong>Hold out the gauge</strong> used for evaluation.</li></ul>
       <p class="note">Falsifiable either way: SO(3) guidance has non-zero gradient only for an
@@ -440,30 +444,36 @@ def main():
                  f'<div class="inner">{head}{html}</div>'
                  f'<div class="pg">{i+1} / {total}</div></section>')
 
-    html = f"""<meta name="claude:viewport-fit-sides" content="cover">
+    html = f"""<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Phase 1 Thesis Deck</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 /* Layout: one 16:9 slide at a time, arrow keys to move */
 :root {{
-  --bg:#fbfbfa; --panel:#ffffff; --ink:#151917; --ink-2:#4a514a; --ink-3:#7d837a;
-  --line:#e3e5df; --accent:#1f6f6b; --core:#eef3f1;
-  --ok:{GREEN}; --bad:{RED}; --warn:{YELLOW};
+  --bg:#fcfcfd; --panel:#ffffff; --ink:#16181b; --ink-2:#4c5157; --ink-3:#80868e;
+  --line:#e2e5e8; --accent:#2f6690; --core:#edf1f5;
+  --ok:{ACCENT}; --bad:{BAD}; --warn:{MID};
   --f-disp:'Space Grotesk',system-ui,sans-serif;
   --f-body:'Inter',system-ui,sans-serif;
   --f-mono:'IBM Plex Mono',ui-monospace,monospace;
 }}
 @media (prefers-color-scheme: dark) {{
   :root:not([data-theme="light"]) {{
-    --bg:#101211; --panel:#191c1a; --ink:#f2f4ef; --ink-2:#b9c0b7; --ink-3:#848b82;
-    --line:#2b302c; --accent:#63bdb5; --core:#1d2321; color-scheme: dark;
+    --bg:#0f1113; --panel:#181b1f; --ink:#eff1f4; --ink-2:#b4bbc3; --ink-3:#848b93;
+    --line:#2a2f34; --accent:#7fa8cc; --core:#1b2127; color-scheme: dark;
   }}
 }}
 :root[data-theme="dark"] {{
-  --bg:#101211; --panel:#191c1a; --ink:#f2f4ef; --ink-2:#b9c0b7; --ink-3:#848b82;
-  --line:#2b302c; --accent:#63bdb5; --core:#1d2321; color-scheme: dark;
+  --bg:#0f1113; --panel:#181b1f; --ink:#eff1f4; --ink-2:#b4bbc3; --ink-3:#848b93;
+  --line:#2a2f34; --accent:#7fa8cc; --core:#1b2127; color-scheme: dark;
 }}
+*, *::before, *::after {{ box-sizing:border-box; }}
 html,body {{ height:100%; }}
+img {{ max-width:100%; }}
 body {{ background:var(--bg); color:var(--ink); font-family:var(--f-body); margin:0; }}
 .slide {{ display:none; min-height:100%; box-sizing:border-box;
   padding-left:max(16px, env(safe-area-inset-left, 0px));
@@ -479,7 +489,7 @@ h2::after {{ content:""; display:block; width:54px; height:3px; background:var(-
   margin-top:14px; border-radius:2px; }}
 .big {{ font-size:clamp(18px,2.4vw,26px); color:var(--ink); font-weight:500; margin:0 0 20px;
   max-width:30ch; line-height:1.35; }}
-.hero {{ font-family:var(--f-disp); font-size:clamp(64px,13vw,150px); color:var(--ok);
+.hero {{ font-family:var(--f-disp); font-size:clamp(64px,13vw,150px); color:var(--accent);
   margin:0 0 4px; line-height:1; letter-spacing:-0.04em; }}
 ul {{ margin:0 0 14px; padding-left:24px; }}
 li {{ font-size:clamp(15px,1.75vw,20px); margin-bottom:13px; line-height:1.5; max-width:46ch;
@@ -511,9 +521,9 @@ table.t th {{ font-family:var(--f-disp); font-size:12px; letter-spacing:0.06em; 
   color:var(--ink-3); text-align:left; padding:0 30px 9px 0; font-weight:600; white-space:nowrap; }}
 table.t td {{ padding:10px 30px 10px 0; border-top:1px solid var(--line); color:var(--ink-2);
   font-variant-numeric:tabular-nums; white-space:nowrap; }}
-td.ok {{ color:var(--ok); font-weight:600; }}
+td.ok {{ color:var(--accent); font-weight:600; }}
 td.bad {{ color:var(--bad); font-weight:600; }}
-td.warn {{ color:var(--warn); font-weight:600; }}
+td.warn {{ color:var(--ink-3); font-weight:600; }}
 .pg {{ position:fixed; right:max(18px, env(safe-area-inset-right, 0px));
   bottom:calc(16px + env(safe-area-inset-bottom, 0px)); font-family:var(--f-mono);
   font-size:12px; color:var(--ink-3); }}
@@ -524,10 +534,12 @@ td.warn {{ color:var(--warn); font-weight:600; }}
   bottom:calc(16px + env(safe-area-inset-bottom, 0px)); font-size:12px; color:var(--ink-3); }}
 @media (prefers-reduced-motion: reduce) {{ .bar {{ transition:none; }} }}
 </style>
+</head>
+<body>
 
 {body}
 <div class="bar" id="bar"></div>
-<div class="hint">← → to move</div>
+<div class="hint">use the arrow keys</div>
 <script>
 (function () {{
   var s = Array.prototype.slice.call(document.querySelectorAll('.slide'));
@@ -552,6 +564,8 @@ td.warn {{ color:var(--warn); font-weight:600; }}
   show(m ? parseInt(m[1], 10) - 1 : 0);
 }})();
 </script>
+</body>
+</html>
 """
     OUT.write_text(html)
     print(f"wrote {OUT} ({len(html)/1024:.0f} KB, {total} slides)")
