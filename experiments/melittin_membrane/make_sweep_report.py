@@ -9,7 +9,8 @@ import json
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-OUT = HERE / "opm_frame_sweep_report.html"
+REPORTS = HERE / "reports"
+OUT = REPORTS / "02_opm_frame_sweep_report.html"
 GOOD, CRIT, WARN = "#0ca30c", "#d03b3b", "#fab219"
 
 SHORT = {
@@ -65,6 +66,7 @@ def paired_bars(items, *, title, sub, unit, want):
 
 
 def main():
+    REPORTS.mkdir(exist_ok=True)
     fc = json.loads((HERE / "objective_validation" / "frame_comparison.json").read_text())
     sweep = list(csv.DictReader((HERE / "results_opm" / "analysis" / "summary.csv").open()))
 

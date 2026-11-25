@@ -5,7 +5,8 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 DATA = HERE / "objective_validation" / "validation.json"
-OUT = HERE / "objective_functions_report.html"
+REPORTS = HERE / "reports"
+OUT = REPORTS / "01_objective_functions_report.html"
 
 GOOD, CRIT, WARN = "#0ca30c", "#d03b3b", "#fab219"
 
@@ -105,6 +106,7 @@ def bar_chart(items, *, title, sub, unit, good_is, domain=None, ref=None, ref_la
 
 
 def main():
+    REPORTS.mkdir(exist_ok=True)
     d, objs = load()
     passed = [o for o in objs if o["pass"]]
     frame_objs = [o for o in objs if o["frame"]]
