@@ -179,190 +179,253 @@ def slide(kind, title, body, note=""):
 
 
 # ----------------------------------------------------------------------------------
-slide("title", "Steering a protein generator toward the membrane",
-      """<p class="sub">Phase 1 · what we built, what broke, and what the numbers say</p>
+slide("title", "Steering a learned sampler toward a membrane",
+      """<p class="sub">Phase 1 · guiding a diffusion model on R<sup>3</sup> × SO(3) with a
+      depth-dependent free energy</p>
       <p class="meta">BioEmu · inference-time guidance · melittin, pardaxin, magainin-2</p>""")
 
-slide("", "Proteins are not one shape",
-      """<p class="big">A protein is a chain that keeps moving.</p>
-      <ul><li>A single picture of it is an average, not the truth.</li>
-      <li>What it <em>does</em> often depends on the shapes it visits rarely.</li>
-      <li>So we want a <strong>population of shapes</strong>, with the right proportions.</li></ul>""")
+slide("", "The physical system",
+      """<p class="big">A protein is a heteropolymer: ~20 monomer types, one linear chain.</p>
+      <ul><li>Backbone bond lengths and angles are <strong>stiff</strong> — effectively holonomic
+      constraints. The soft degrees of freedom are torsions.</li>
+      <li>So the configuration space is a constrained manifold, not R<sup>3n</sup>.</li>
+      <li>Each monomer carries a side group: some nonpolar, some charged.</li></ul>
+      <p class="note">That last point is the entire driving force for what follows.</p>""")
 
-slide("", "Near a membrane, the population changes",
-      """<p class="big">A cell membrane is an oily sheet about 30 Å thick.</p>
-      <ul><li>Oily parts of a peptide want to be <strong>inside</strong> it.</li>
-      <li>Charged parts want to stay <strong>outside</strong>, in water.</li>
-      <li>Many peptides are floppy in water and fold only when they arrive.</li></ul>
-      <p class="note">Antibiotics that punch holes in bacteria work this way. If you want to design one,
-      you need the shapes it takes <em>at the membrane</em> — not in a test tube.</p>""")
+slide("", "The second environment",
+      """<p class="big">A cell membrane is a ~30 Å slab of hydrocarbon in water.</p>
+      <ul><li>Nonpolar side groups lower their free energy <strong>inside</strong> the slab.</li>
+      <li>Charged ones pay a large desolvation penalty there and stay <strong>outside</strong>.</li>
+      <li>A chain carrying both is frustrated: it must choose an orientation and a depth.</li></ul>
+      <p class="note">Short peptides are often disordered in bulk water and order only at the
+      interface. The interesting physics is the <em>transition</em>.</p>""")
 
-slide("", "The gap we are trying to close",
-      """<p class="big">Good generators exist. They were trained on water.</p>
-      <ul><li><strong>BioEmu</strong> generates a realistic population of shapes from a sequence.</li>
-      <li>It never saw a membrane.</li>
-      <li>Retraining it would need membrane data we do not have, and a lot of compute.</li></ul>
-      <p class="note">So: can we <strong>steer</strong> a model we cannot retrain?</p>""")
+slide("math", "What we actually want",
+      """<div class="eqbox">
+      <div class="eq">x ~ p(x) &nbsp;∝&nbsp; exp( −U(x) / k<sub>B</sub>T )</div>
+      <p class="eqcap">samples from the equilibrium ensemble over conformations x</p>
+      </div>
+      <ul><li>Not one minimum — the <strong>distribution</strong>. Function often lives in the tail.</li>
+      <li>Molecular dynamics integrates the Langevin equation honestly, but barrier crossings are
+      rare events: µs of simulation for ms of physics.</li></ul>
+      <p class="note">So: can a generative model act as a sampler for p(x), trained once,
+      amortised over all queries?</p>""")
 
-slide("chart", "How these generators work",
+slide("chart", "Diffusion models as learned samplers",
       f"""<div class="fig">{chart_diffusion()}</div>
-      <p class="note">Start from pure noise. Remove a little, 100 times. A structure appears.
-      Training teaches the model one thing: which direction is "less noisy" from here.</p>""")
+      <p class="note">Noise the data to a tractable prior, then learn to reverse it. The reverse
+      pass is an SDE integrated in 100 steps. BioEmu is this, trained on ~200 ms of aggregate MD
+      plus experimental folding free energies.</p>""")
 
-slide("math", "The one equation that matters",
+slide("math", "Forward: Ornstein–Uhlenbeck to a Gaussian prior",
       """<div class="eqbox">
-      <div class="eq">x<sub>t</sub> &nbsp;=&nbsp; α<sub>t</sub> x<sub>0</sub> &nbsp;+&nbsp; σ<sub>t</sub> ε</div>
-      <p class="eqcap">adding noise: real shape, faded by α, plus noise of size σ</p>
+      <div class="eq">dx &nbsp;=&nbsp; −½ β(t) x &nbsp;dt&nbsp; + &nbsp;√β(t) &nbsp;dW</div>
+      <p class="eqcap">variance-preserving; p<sub>T</sub>(x) → N(0, I)</p>
       </div>
       <div class="eqbox">
-      <div class="eq">dx &nbsp;=&nbsp; [ f(x,t) − g(t)<sup>2</sup> <span class="hl">s<sub>θ</sub>(x,t)</span> ] dt &nbsp;+&nbsp; g(t) dw̄</div>
-      <p class="eqcap">removing it: run time backwards, steered by the <span class="hl">score</span></p>
-      </div>
-      <p class="note">The score <span class="hl">s<sub>θ</sub> ≈ ∇<sub>x</sub> log p<sub>t</sub>(x)</span> is just
-      "which way is more realistic". It is the only thing the network learns.</p>""")
+      <div class="eq">x<sub>t</sub> &nbsp;=&nbsp; α<sub>t</sub> x<sub>0</sub> &nbsp;+&nbsp;
+      σ<sub>t</sub> ε , &nbsp;&nbsp; ε ~ N(0, I) , &nbsp;&nbsp; α<sub>t</sub><sup>2</sup> +
+      σ<sub>t</sub><sup>2</sup> = 1</div>
+      <p class="eqcap">the transition kernel is Gaussian in closed form — this is what makes
+      training cheap</p>
+      </div>""")
 
-slide("", "Why this shape of model suits us",
-      """<ul><li>It samples a <strong>population</strong>, which is what we wanted.</li>
-      <li>The score is a <strong>gradient</strong> — and gradients add.</li>
-      <li>So we can bolt on a second opinion without touching the trained weights.</li></ul>
-      <p class="note">That last point is the whole reason this project is possible.</p>""")
-
-slide("math", "Guidance: adding a second opinion",
+slide("math", "Reverse: Anderson's time-reversed SDE",
       """<div class="eqbox">
-      <div class="eq">∇ log p(x | y) &nbsp;=&nbsp; ∇ log p(x) &nbsp;+&nbsp; ∇ log p(y | x)</div>
-      <p class="eqcap">Bayes, differentiated: what the model knows, plus what we want</p>
+      <div class="eq">dx &nbsp;=&nbsp; [ −½β(t) x &nbsp;−&nbsp; β(t) <span class="hl">∇<sub>x</sub>
+      log p<sub>t</sub>(x)</span> ] dt &nbsp;+&nbsp; √β(t) &nbsp;dW̄</div>
+      <p class="eqcap">Anderson 1982 — exact, given the score of every marginal</p>
+      </div>
+      <p class="big">The <span class="hl">score</span> is the only unknown.</p>
+      <div class="eqbox">
+      <div class="eq">p ∝ e<sup>−U/k<sub>B</sub>T</sup> &nbsp;&nbsp;⟹&nbsp;&nbsp;
+      ∇ log p &nbsp;=&nbsp; −∇U / k<sub>B</sub>T &nbsp;=&nbsp; F / k<sub>B</sub>T</div>
+      <p class="eqcap">for a Boltzmann distribution the score <em>is</em> the force field, in units of k<sub>B</sub>T</p>
+      </div>""")
+
+slide("math", "Training: denoising score matching",
+      """<div class="eqbox">
+      <div class="eq">L(θ) &nbsp;=&nbsp; E<sub>t, x<sub>0</sub>, ε</sub>
+      ‖ s<sub>θ</sub>(x<sub>t</sub>, t) &nbsp;+&nbsp; ε / σ<sub>t</sub> ‖<sup>2</sup></div>
+      <p class="eqcap">because ∇<sub>x<sub>t</sub></sub> log p(x<sub>t</sub> | x<sub>0</sub>) =
+      −ε / σ<sub>t</sub> for the Gaussian kernel above</p>
+      </div>
+      <p class="note">Regression against a known analytic target. No partition function, no
+      normalisation, nothing to integrate. This is why it scales where free-energy methods struggle.</p>""")
+
+slide("math", "The state space is not R<sup>3n</sup>",
+      """<p class="big">BioEmu puts a rigid frame on every monomer.</p>
+      <div class="codebox">positions&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;x ∈ R<sup>n×3</sup>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;one point per monomer
+orientations&nbsp;&nbsp;R ∈ SO(3)<sup>n</sup>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;how each frame is rotated</div>
+      <ul><li>Two coupled diffusions: Gaussian on R<sup>3</sup>, <strong>IGSO(3)</strong> — the heat
+      kernel on the group — on the rotations.</li>
+      <li>The SO(3) score lives in the Lie algebra so(3) ≅ R<sup>3</sup>.</li>
+      <li>All other atoms are <strong>reconstructed</strong> from (x, R) assuming ideal local geometry.</li></ul>
+      <p class="note">Nothing in the model <em>enforces</em> that neighbouring frames join up. It has
+      only learned to emit consistent ones. Hold that thought.</p>""")
+
+slide("", "Conditioning versus guidance",
+      """<p class="big">Two different ways to bias a generative model.</p>
+      <ul><li><strong>Conditioning</strong> is trained in. BioEmu learns p(x | c) where c is a
+      representation of the sequence from AlphaFold2. Changing c means retraining.</li>
+      <li><strong>Guidance</strong> is applied at inference. It modifies the sampled distribution
+      using an external function, with the weights frozen.</li></ul>
+      <p class="note">We have no membrane training data and no budget to retrain. Guidance is the
+      only lever — and because the score is a gradient, it is a clean one.</p>""")
+
+slide("math", "Guidance = tilting the target",
+      """<div class="eqbox">
+      <div class="eq">p̃(x) &nbsp;∝&nbsp; p(x) &nbsp;·&nbsp; e<sup>−λ E(x)</sup>
+      &nbsp;&nbsp;⟹&nbsp;&nbsp; ∇ log p̃ &nbsp;=&nbsp; ∇ log p &nbsp;−&nbsp; λ ∇E</div>
+      <p class="eqcap">an exponential tilt of the learned measure; the scores simply add</p>
       </div>
       <div class="eqbox">
-      <div class="eq">s<sub>guided</sub> &nbsp;=&nbsp; s<sub>θ</sub>(x<sub>t</sub>, t) &nbsp;−&nbsp;
-      <span class="hl">λ ∇<sub>x</sub> E( x̂<sub>0</sub> )</span></div>
-      <p class="eqcap">in practice: push downhill on an energy E, with strength λ</p>
+      <div class="eq">s<sub>guided</sub> &nbsp;=&nbsp; s<sub>θ</sub>(x<sub>t</sub>, t)
+      &nbsp;−&nbsp; <span class="hl">λ ∇<sub>x</sub> E</span></div>
       </div>
-      <p class="note">Problem: E must be judged on a <em>finished</em> shape, but mid-run we only have noise.</p>""")
+      <p class="note">At λ = 1/k<sub>B</sub>T this is exactly adding E to the potential:
+      p̃ ∝ exp(−(U+E)/k<sub>B</sub>T). Any other λ is a deliberate over- or under-weighting.</p>""")
 
-slide("math", "Tweedie: guessing the finished shape early",
-      """<div class="eqbox">
-      <div class="eq">x̂<sub>0</sub> &nbsp;=&nbsp; <span class="frac"><span>x<sub>t</sub> + σ<sub>t</sub><sup>2</sup> s<sub>θ</sub>(x<sub>t</sub>, t)</span><span>α<sub>t</sub></span></span></div>
-      <p class="eqcap">the model's best guess at the final shape, from where we are now</p>
+slide("math", "The obstruction: E needs a clean configuration",
+      """<p class="big">∇E must be evaluated somewhere. Mid-trajectory, x<sub>t</sub> is noise.</p>
+      <div class="eqbox">
+      <div class="eq">x̂<sub>0</sub> &nbsp;=&nbsp; E[ x<sub>0</sub> | x<sub>t</sub> ] &nbsp;=&nbsp;
+      <span class="frac"><span>x<sub>t</sub> + σ<sub>t</sub><sup>2</sup> s<sub>θ</sub>(x<sub>t</sub>, t)</span><span>α<sub>t</sub></span></span></div>
+      <p class="eqcap">Tweedie's formula — the posterior mean, free from the score we already have</p>
       </div>
-      <p class="note">We score <em>that</em> guess and push its gradient back into the sampler.
-      It is a guess, and early on a poor one — a point we will return to, painfully.</p>""")
+      <p class="note">We score x̂<sub>0</sub> and backpropagate through it. Exact as a posterior
+      mean; a poor proxy for a <em>sample</em> when σ<sub>t</sub> is large. This approximation
+      caused one of our two failures.</p>""")
 
-slide("", "What BioEmu actually hands us",
-      """<p class="big">Two tensors per shape. Not atoms.</p>
-      <div class="codebox">pos&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;(n, 3)&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;one point per building block
-orientations&nbsp;&nbsp;(n, 3, 3)&nbsp;&nbsp;&nbsp;how each block is turned</div>
-      <ul><li>Every other atom is <strong>rebuilt</strong> from those two.</li>
-      <li>Nothing forces neighbouring blocks to join up — the model only
-      <em>learned</em> to place them consistently.</li></ul>
-      <p class="note">Remember this slide. It explains every failure that follows.</p>""")
-
-slide("chart", "What we score: how deep each part sits",
+slide("chart", "The potential: depth-dependent transfer free energy",
       f"""<div class="fig">{chart_ez()}</div>
-      <p class="note">Measured energies (Senes et al. 2007). Oily Leucine is happiest in the middle;
-      charged Lysine is unhappy there and fine outside. Add this up over the whole chain → one number.</p>""")
+      <p class="note">Senes et al. 2007: per-monomer-type ΔG of transfer, fitted against depth in
+      known membrane structures. Nonpolar monomers gain ~0.6 kcal/mol in the core; charged ones pay
+      ~1.7. Sum over the chain → one scalar. Note it is <strong>separable</strong> in the monomers.</p>""")
 
-slide("", "But where <em>is</em> the membrane?",
-      """<p class="big">The generator has no idea which way is up.</p>
-      <ul><li>It outputs shapes in a random orientation.</li>
-      <li>"Depth" is meaningless until we decide where the membrane sits.</li>
-      <li>Two choices: <strong>work it out</strong>, or <strong>copy it</strong> from an experiment.</li></ul>
-      <p class="note">We tried the first. It was the single biggest mistake of Phase 1.</p>""")
+slide("", "A gauge problem",
+      """<p class="big">p(x) is SE(3)-invariant. E(x) is not.</p>
+      <ul><li>The generator has no preferred frame — rotate a sample and it is equally valid.</li>
+      <li>But "depth" is defined against an <strong>external</strong> slab, with a normal
+      <strong>n</strong> and an offset c.</li>
+      <li>So guidance requires <em>fixing the gauge</em>, and how we fix it is a modelling choice,
+      not a detail.</li></ul>
+      <p class="note">Two options: determine (n, c) variationally, or transport it from a structure
+      where it is already known. We chose the first. It was the central error of Phase 1.</p>""")
 
-slide("chart", "The mistake",
+slide("chart", "Why the variational gauge fails",
       f"""<div class="fig">{chart_frames()}</div>
-      <p class="note">If you let the maths choose the membrane to make the score look good, it will.
-      Checked against a real experimental placement, it was 66–83° off — almost at right angles.</p>""")
+      <p class="note">Minimising E over (n, c) as well as x lets the objective relocate the slab
+      instead of improving the configuration. Benchmarked against an experimentally determined
+      placement, the recovered normal was <strong>66–83° off</strong>.</p>""")
 
-slide("bad", "Attempt 1 — it fell apart",
-      """<table class="t"><tr><th>strength</th><th>intact structures</th><th>score</th></tr>
-      <tr><td>none</td><td class="ok">94%</td><td>−2.68</td></tr>
-      <tr><td>medium</td><td class="warn">72%</td><td>−2.84</td></tr>
-      <tr><td>strong</td><td class="bad">4%</td><td>−1.31</td></tr></table>
-      <p class="note">Stronger steering made the score <em>worse</em> and destroyed the molecules.
-      The energy was being improved by pulling the chain apart.</p>""")
+slide("bad", "Attempt 1 — the ensemble collapsed",
+      """<table class="t"><tr><th>λ</th><th>valid configurations</th><th>⟨E⟩</th></tr>
+      <tr><td>0</td><td class="ok">94%</td><td>−2.68</td></tr>
+      <tr><td>100</td><td class="warn">72%</td><td>−2.84</td></tr>
+      <tr><td>500</td><td class="bad">4%</td><td>−1.31</td></tr></table>
+      <p class="note">⟨E⟩ got <em>worse</em> at strong coupling while the chain fell apart. Diagnostic:
+      configurations failing the validity check scored <strong>better</strong> than those passing it
+      (−3.18 vs −2.84). The tilt was being satisfied by breaking the polymer.</p>""")
 
-slide("", "Why it could cheat",
-      """<p class="big">The energy adds up each block separately.</p>
-      <div class="eqbox"><div class="eq">E &nbsp;=&nbsp; Σ<sub>i</sub> &nbsp;f( type<sub>i</sub> , depth<sub>i</sub> )</div></div>
-      <ul><li>Nothing in that sum knows the blocks are joined.</li>
-      <li>The cheapest way to lower it: let every block sit wherever it likes.</li>
-      <li>Stretching the chain, or unfolding it, buys exactly that freedom.</li></ul>""")
+slide("math", "Why it was exploitable",
+      """<div class="eqbox">
+      <div class="eq">E &nbsp;=&nbsp; Σ<sub>i</sub> &nbsp;f( type<sub>i</sub> , n·x<sub>i</sub> − c )</div>
+      <p class="eqcap">separable: no two-body term, no chain connectivity</p>
+      </div>
+      <ul><li>Its infimum puts nonpolar monomers at the midplane and charged ones at infinity
+      <strong>simultaneously</strong> — while bonded 3.8 Å apart.</li>
+      <li>Unreachable for a connected chain, so the gradient points permanently at a configuration
+      that does not exist.</li></ul>
+      <p class="note">For melittin: infimum −6.64 kcal/mol; best an ideal helix reaches −2.66;
+      the unguided ensemble already sits at −2.68. No headroom without breaking bonds.</p>""")
 
-slide("", "So we stopped guessing and built a test",
-      """<p class="big">Check the scoring rule <em>before</em> trusting it.</p>
-      <ul><li><strong>Does it like folded shapes?</strong> It should.</li>
-      <li><strong>Can we cheat it?</strong> Stretch a shape on purpose; the score must get worse.</li>
-      <li><strong>Does it recognise a real membrane?</strong> Throw 4,000 random
-      membranes through a known structure — the true one should win.</li></ul>
-      <p class="note">Nine candidate rules went in. Seven could be cheated.</p>""")
+slide("", "So we built a screen for the objective",
+      """<p class="big">Validate the potential before coupling it to the sampler.</p>
+      <ul><li><strong>Order check</strong> — does E correlate negatively with helicity? It must.</li>
+      <li><strong>Adversarial check</strong> — apply a transform known to be invalid (dilate the
+      chain along <strong>n</strong>). E must increase.</li>
+      <li><strong>Gauge check</strong> — hold a known structure fixed, sample 4,000 random (n, c).
+      The experimental placement must rank at the top.</li></ul>
+      <p class="note">Nine candidate potentials. Seven were exploitable under a variational gauge.</p>""")
 
-slide("good", "Attempt 2 — copy the membrane instead",
-      """<p class="big">Take the placement from an experiment and carry it over.</p>
-      <table class="t"><tr><th>scoring rule</th><th>likes folded?</th><th>cheatable?</th></tr>
-      <tr><td>original, maths-chosen membrane</td><td class="bad">no</td><td class="bad">yes</td></tr>
-      <tr><td>original, copied membrane</td><td class="ok">yes</td><td class="ok">no</td></tr></table>
-      <p class="note">Every rule we tested improved. The scoring rule was never the main problem —
-      <strong>the membrane placement was</strong>.</p>""")
+slide("good", "Attempt 2 — transport the gauge instead",
+      """<p class="big">Take (n, c) from an experimentally placed structure by Kabsch superposition.</p>
+      <table class="t"><tr><th>potential</th><th>corr. with order</th><th>exploitable</th></tr>
+      <tr><td>Ez, variational gauge</td><td class="bad">+0.52</td><td class="bad">yes, −1.98σ</td></tr>
+      <tr><td>Ez, transported gauge</td><td class="ok">−0.56</td><td class="ok">no, +0.78σ</td></tr></table>
+      <p class="note">All nine potentials flipped to the correct sign. The potential was never the
+      main defect — <strong>the gauge was</strong>. The unmodified Ez turned out to be the best of
+      the nine.</p>""")
 
-slide("bad", "Attempt 2 still broke the molecules",
-      """<p class="big">Right rule. Right membrane. Still 98% broken.</p>
-      <ul><li>The breakage was always in the <strong>joins between blocks</strong>, never collisions.</li>
-      <li>We push the <em>positions</em> and never touch the <em>orientations</em>.</li>
-      <li>The two drift apart, and the rebuilt join snaps.</li></ul>
-      <p class="note">Back to that earlier slide: nothing makes the blocks join up. We were breaking
-      the one thing the model had only learned by habit.</p>""")
+slide("bad", "Attempt 2 still broke the chain",
+      """<p class="big">Correct potential, correct gauge, 98% invalid.</p>
+      <ul><li>Failures were <strong>always</strong> in the inter-monomer bond (0.74–0.98), never
+      steric overlap (0.04–0.10).</li>
+      <li>We apply ∇E to <strong>x</strong> and never to <strong>R</strong>.</li>
+      <li>The two channels decohere, and the reconstructed bond — which depends on both — snaps.</li></ul>
+      <p class="note">Back to the state-space slide: nothing enforces frame consistency. We were
+      destroying the one property the model held only statistically.</p>""")
 
-slide("", "And then a mistake in our own maths",
-      """<p class="big">We had been measuring it wrong the whole time.</p>
-      <ul><li>Every run starts from the <strong>same random seed</strong>.</li>
-      <li>So shape #7 with steering is the <em>same shape</em> as #7 without, nudged.</li>
-      <li>We had been comparing them as if they were strangers.</li></ul>
-      <table class="t"><tr><th>same numbers, compared as…</th><th>p-value</th></tr>
-      <tr><td>strangers</td><td class="bad">0.43 — "nothing here"</td></tr>
-      <tr><td>matched pairs</td><td class="ok">0.000000043</td></tr></table>""")
+slide("math", "And an error of our own",
+      """<p class="big">Our estimator was throwing away the signal.</p>
+      <ul><li>Runs share a seed, so sample j with and without guidance share a prior draw:
+      <strong>matched pairs</strong>, correlation ρ = 0.994.</li></ul>
+      <div class="eqbox">
+      <div class="eq">Var(g − b) = Var(g) + Var(b) − 2ρ√(Var g · Var b)
+      &nbsp;=&nbsp; 2.16 &nbsp;−&nbsp; 2.13 &nbsp;=&nbsp; 0.03</div>
+      <p class="eqcap">pairing cancels 99% of the variance — a control variate, effectively</p>
+      </div>
+      <table class="t"><tr><th>same data, estimator</th><th>p</th></tr>
+      <tr><td>unpaired</td><td class="bad">0.43</td></tr>
+      <tr><td>paired</td><td class="ok">4.3 × 10<sup>−8</sup></td></tr></table>""")
 
-slide("good", "It works",
+slide("good", "The effect is real",
       """<p class="hero">44 / 44</p>
-      <p class="big">Every single shape improved.</p>
-      <ul><li>Zero damage: 94% intact, exactly the same as no steering.</li>
-      <li>Repeated on three more peptides. All improved.</li></ul>""")
+      <p class="big">Every configuration improved, at zero cost to validity.</p>
+      <ul><li>94% valid — identical to the unguided ensemble.</li>
+      <li>Reproduced on three further peptides, all significant.</li></ul>""")
 
-slide("chart", "How hard can we push?",
+slide("chart", "A fixed exchange rate",
       f"""<div class="fig">{chart_lambda()}</div>
-      <p class="note">Push harder and each shape improves more — but fewer survive, at a rate so
-      steady that the <strong>total payoff never changes</strong>. The points sit on one curve.
-      Gentle steering is the sweet spot.</p>""")
+      <p class="note">⟨ΔE⟩ grows with λ; the surviving fraction falls; their <strong>product is
+      constant to within 13% over a 25× range of λ</strong>. The points lie on one hyperbola.
+      That is the signature of a conserved trade-off, not a tuning problem.</p>""")
 
-slide("", "A fair test, by luck of the database",
-      """<p class="big">One peptide, two experimentally known membrane poses.</p>
-      <ul><li><strong>Pardaxin</strong> has been solved both lying on the surface and inserted through.</li>
-      <li>Same sequence → same starting population → only the target differs.</li>
-      <li>Steering it onto the surface worked <strong>1.5× better</strong> than steering it through.</li></ul>
-      <p class="note">Which fits the ceiling we found: sliding onto a surface is a smaller move
-      than threading through a wall.</p>""")
+slide("", "A controlled comparison",
+      """<p class="big">One sequence, two experimentally determined membrane states.</p>
+      <ul><li><strong>Pardaxin</strong> is solved both surface-adsorbed and inserted.</li>
+      <li>Same sequence ⇒ same conditioning ⇒ same prior ensemble. Only the target gauge differs.</li>
+      <li>Surface target: ⟨ΔE⟩ = −0.266, 48/50 retained. Inserted target: −0.173, 40/50.</li></ul>
+      <p class="note">Adsorption is an easier tilt than insertion — consistent with the ceiling,
+      since insertion demands the larger displacement of the chain.</p>""")
 
-slide("chart", "Being honest about the size of it",
+slide("chart", "Leakage, and the honest effect size",
       f"""<div class="fig">{chart_peptides()}</div>
-      <p class="note">Pale = scored using the same experimental structure the steering used.
-      Solid = scored without it. The effect is <strong>3–8× smaller</strong> when measured independently —
-      real, repeatable, but modest. Roughly a third of normal thermal jiggle.</p>""")
+      <p class="note">Pale = evaluated in the <em>same</em> transported gauge the guidance used.
+      Solid = evaluated with an independently determined gauge. The effect is <strong>3–8×
+      smaller</strong> when the estimator does not share information with the objective. Still
+      significant (p = 0.003–0.03); magnitude ≈ 0.3 k<sub>B</sub>T.</p>""")
 
-slide("", "What Phase 1 settled",
-      """<ul><li><strong>Steering a frozen generator works.</strong> Every shape improved, on four peptides.</li>
-      <li><strong>Where you put the membrane matters more than how you score it.</strong>
-      That was the opposite of our starting assumption.</li>
-      <li><strong>A scoring rule must be tested for cheats before use.</strong> Seven of nine could be.</li>
-      <li><strong>There is a ceiling</strong>, and we know what sets it: we move the blocks
-      but not their orientations.</li></ul>""")
+slide("", "What Phase 1 established",
+      """<ul><li><strong>Inference-time guidance of a frozen sampler works</strong> — monotone in λ,
+      100% of configurations, four peptides.</li>
+      <li><strong>Gauge fixing dominates potential design.</strong> The opposite of our prior.</li>
+      <li><strong>Separable potentials are exploitable</strong> by construction, and must be screened
+      adversarially before use.</li>
+      <li><strong>A conserved effect-versus-validity trade-off</strong> bounds what guiding x alone
+      can achieve.</li></ul>""")
 
 slide("", "Phase 2",
-      """<ul><li><strong>Steer the orientations too.</strong> Turning a block cannot snap a join —
-      it should lift the ceiling rather than raise the damage.</li>
-      <li><strong>Test the scoring rule on half-finished shapes</strong>, not just finished ones.
-      That gap is what let two failures through.</li>
-      <li><strong>Score with a held-out structure</strong>, so the measurement cannot flatter itself.</li></ul>
-      <p class="note">Open question: is the ceiling a property of steering positions, or of this
-      scoring rule? The orientation experiment answers it either way.</p>""")
+      """<ul><li><strong>Guide the SO(3) channel.</strong> Rotating a frame moves side groups without
+      displacing any backbone point, so it cannot violate the bond constraint. If the trade-off
+      slope differs, the position channel was the binding one.</li>
+      <li><strong>Screen on noised intermediates</strong>, not just x<sub>0</sub> — the gap that let
+      two failures through.</li>
+      <li><strong>Hold out the gauge</strong> used for evaluation.</li></ul>
+      <p class="note">Falsifiable either way: SO(3) guidance has non-zero gradient only for an
+      orientation-dependent potential, which also tests whether depth alone is the right order
+      parameter.</p>""")
 
 slide("end", "Thank you", """<p class="sub">Questions</p>""")
 
