@@ -40,11 +40,11 @@ from bioemu.steering.membrane_objectives import (
 )
 
 HERE = Path(__file__).resolve().parent
-MELITTIN = "GIGAVLKVLTTGLPALISWIKRKRQQ"
+DEFAULT_SEQ = "GIGAVLKVLTTGLPALISWIKRKRQQ"  # melittin
 DEFAULT_REF = HERE / "reference" / "opm" / "2mlt_opm.pdb"
 
 
-def score_run(run_dir: Path, ref_ca, objective) -> tuple[np.ndarray, np.ndarray]:
+def score_run(run_dir: Path, ref_ca, objective, seq: str) -> tuple[np.ndarray, np.ndarray]:
     files = sorted(glob.glob(f"{run_dir}/batch_*.npz"))
     pos = np.concatenate([np.load(f)["pos"] for f in files])
     tr = mdtraj.load_xtc(str(run_dir / "samples.xtc"), top=str(run_dir / "topology.pdb"))
@@ -52,7 +52,7 @@ def score_run(run_dir: Path, ref_ca, objective) -> tuple[np.ndarray, np.ndarray]
     physical[_get_physical_traj_indices(tr)] = True
     x = torch.tensor(pos, dtype=torch.float32)
     n, c = reference_frame(x * 10.0, ref_ca)
-    e, _ = objective(x, sequence=MELITTIN, normal=n, center=c)
+    e, _ = objective(x, sequence=seq, normal=n, center=c)
     return physical, e.detach().numpy()
 
 
@@ -61,19 +61,21 @@ def main() -> None:
     p.add_argument("--results", required=True, help="a results directory containing baseline/")
     p.add_argument("--reference", default=str(DEFAULT_REF))
     p.add_argument("--objective", default="ez_ca")
+    p.add_argument("--sequence", default=DEFAULT_SEQ,
+                   help="peptide sequence; must match the reference's residue count")
     args = p.parse_args()
 
     res = Path(args.results)
     ref = load_reference_ca(args.reference)
     obj = OBJECTIVES_BY_KEY[args.objective]
 
-    b_phys, b_e = score_run(res / "baseline", ref, obj)
-    print(f"{res.name} | objective {args.objective} | OPM frame | baseline n={len(b_e)}")
+    b_phys, b_e = score_run(res / "baseline", ref, obj, args.sequence)
+    print(f"{res.name} | {args.objective} | ref {Path(args.reference).name} | seq len {len(args.sequence)} | baseline n={len(b_e)}")
     print(f"baseline Ez {b_e[b_phys].mean():+.3f} +/- {b_e[b_phys].std():.3f} "
           f"(physical {b_phys.mean():.2f})\n")
     print(f"{'run':28} {'pairs':>6} {'mean delta':>11} {'won':>6} {'p paired':>10} {'p unpaired':>11}")
     for run in sorted(d for d in res.iterdir() if d.is_dir() and d.name not in ("baseline", "analysis")):
-        g_phys, g_e = score_run(run, ref, obj)
+        g_phys, g_e = score_run(run, ref, obj, args.sequence)
         both = b_phys & g_phys
         if both.sum() < 5:
             print(f"{run.name:28} {both.sum():6d}   too few physical pairs to compare")
