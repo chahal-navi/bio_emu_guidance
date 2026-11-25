@@ -99,7 +99,14 @@ def normalize_resname(name: str) -> str:
 def ez_parameters(resnames: list[str]) -> dict[str, torch.Tensor]:
     """Per-residue Ez parameter tensors (length n_res)."""
     n = len(resnames)
-    p1, p2, p3 = torch.zeros(n), torch.zeros(n), torch.ones(n)
+    # p2 and p3 must be NON-ZERO even for residues with no parameters (Cys, unknowns).
+    # p2 is a divisor: (z/p2)**p3. Leaving it at 0 gives inf in the forward pass, which
+    # the is_known mask hides (0 * inf -> 0 for the energy), but the BACKWARD pass then
+    # yields NaN and poisons the whole gradient. The energy looks fine and guidance
+    # silently dies. This only bites on sequences containing Cys, which is why melittin,
+    # pardaxin and magainin-2 all ran clean and MgtR produced all-NaN coordinates.
+    p1 = torch.zeros(n)
+    p2, p3 = torch.ones(n), torch.ones(n)
     is_gaussian = torch.zeros(n, dtype=torch.bool)
     is_known = torch.zeros(n)
     unknown = set()

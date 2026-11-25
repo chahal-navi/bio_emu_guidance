@@ -245,3 +245,28 @@ def test_sum_potential_adds_terms():
     torch.testing.assert_close(total(x), ez(x) + chain(x), atol=1e-4, rtol=0)
     # an ideal helix has near-ideal Ca-Ca spacing, so the chain term should be ~0 there
     assert chain(x).abs().item() < 1.0
+
+
+def test_cys_does_not_poison_the_gradient():
+    """A Cys-containing sequence must still give a finite gradient.
+
+    Cys has no Ez parameters (the paper fits it a flat zero curve), so its p2 divisor was
+    left at 0, giving inf in the forward pass. The is_known mask hid that in the energy
+    but the backward pass returned NaN for EVERY residue. Real peptides hit this: MgtR
+    produced all-NaN coordinates while melittin, pardaxin and magainin-2 ran clean,
+    purely because only MgtR contains a cysteine.
+    """
+    from bioemu.steering.membrane_objectives import OBJECTIVES_BY_KEY
+
+    mgtr = "MNRSPDKIIALIFLLISLLVLCLALWQIVF"
+    assert "C" in mgtr
+    x = (_ideal_helix_nm(len(mgtr))).clone().requires_grad_(True)
+    energy, _ = OBJECTIVES_BY_KEY["ez_ca"](x[None][0][None], sequence=mgtr)
+    (grad,) = torch.autograd.grad(energy.sum(), x)
+    assert torch.isfinite(energy).all(), "energy went non-finite"
+    assert torch.isfinite(grad).all(), "Cys poisoned the gradient with NaN"
+    assert grad.abs().max() > 0, "gradient is identically zero"
+    # Cys itself must contribute nothing, per the paper's flat zero curve
+    torch.testing.assert_close(
+        grad[mgtr.index("C")], torch.zeros(3), atol=1e-7, rtol=0
+    )
